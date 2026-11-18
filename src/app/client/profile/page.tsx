@@ -1,0 +1,1 @@
+import {requireRole} from '@/lib/auth';export default async function Page(){const {db,user}=await requireRole('client');const {data}=await db.from('profiles').select('full_name,email,phone').eq('id',user.id).single();return <main className="section container"><h1 className="heading">My Profile</h1><p>{data?.full_name||'Client'}</p><p>{data?.email}</p></main>}

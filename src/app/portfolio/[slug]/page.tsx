@@ -1,0 +1,1 @@
+import Link from 'next/link';export default function Page(){return <main className="section container"><h1 className="heading">Portfolio Album</h1><p className="muted">Album details are available once published from Supabase.</p><Link href="/portfolio" className="btn">Back to Portfolio</Link></main>}
