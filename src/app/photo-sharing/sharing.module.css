@@ -1,0 +1,61 @@
+.shell {
+  --champagne: #e7c590;
+  --subtle: #bfb6aa;
+  --panel: #181614;
+  --line: #39332e;
+  background: #11100f;
+  color: #fcf7ef;
+  padding: clamp(42px, 8vw, 102px) 0;
+  min-height: 62vh;
+}
+
+.shell h1 { font-size: clamp(38px, 7vw, 82px); font-weight: 400; letter-spacing: -.045em; line-height: 1.02; margin: 12px 0 23px; }
+.shell h2 { font-size: clamp(24px, 4vw, 38px); font-weight: 400; margin: 0 0 16px; }
+.shell h3 { font-size: 22px; font-weight: 400; margin: 0 0 10px; }
+.shell p { color: var(--subtle); line-height: 1.65; }
+.shell a { color: var(--champagne); }
+.shell a:hover { text-decoration: underline; }
+.shell :focus-visible { outline: 2px solid var(--champagne); outline-offset: 4px; }
+.shell fieldset { border: 0; padding: 0; margin: 0; }
+.shell label { display: block; }
+.shell label > span { display: block; margin-bottom: 8px; }
+.shell small { color: var(--subtle); }
+.brand { font-size: 12px; font-weight: 700; letter-spacing: .25em; text-transform: uppercase; color: var(--champagne); }
+.hero { display: grid; grid-template-columns: 1fr .9fr; align-items: center; gap: clamp(24px, 5vw, 74px); }
+.heroVisual { position: relative; min-height: clamp(250px, 45vw, 570px); background-size: cover; background-position: center; border-radius: 3px; overflow: hidden; }
+.actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.shell .primary, .shell .secondary {
+  display: inline-flex; width: fit-content; justify-content: center; align-items: center;
+  gap: 8px; color: #19140d; background: var(--champagne); border: 1px solid var(--champagne);
+  border-radius: 99px; padding: 11px 18px; min-height: 44px; font-weight: 700; font-size: 14px;
+}
+.shell .secondary { color: #fcf7ef; background: transparent; border-color: #5f554b; }
+.shell .primary:hover, .shell .secondary:hover { text-decoration: none; filter: brightness(1.14); }
+.shell button:disabled { opacity: .5; cursor: wait; }
+.section { margin-top: 60px; }
+.card, .counter { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: clamp(16px, 3vw, 28px); }
+.card p:last-child { margin-bottom: 0; }
+.columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 14px; }
+.split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.stack { display: grid; gap: 16px; }
+.narrow { max-width: 660px; margin-inline: auto; }
+.details { border-bottom: 1px solid var(--line); padding: 17px 0; }
+.details summary { cursor: pointer; font-weight: 700; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+.status { min-height: 20px; margin: 12px 0; }
+.counter strong { color: var(--champagne); font-size: 26px; display: block; margin-bottom: 6px; }
+.photoList { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.photoRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; overflow-wrap: anywhere; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 16px; }
+.photoCard { padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow-wrap: anywhere; }
+.photoCard img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 4px; }
+.preview { display: block; max-width: 100%; max-height: 75vh; margin: 0 auto; object-fit: contain; }
+.dialog { max-width: min(850px, calc(100vw - 28px)); color: #fcf7ef; background: #181614; border: 1px solid #39332e; border-radius: 8px; }
+.dialog::backdrop { background: #000b; }
+.qr { display: block; width: min(100%, 220px); height: auto; margin: 12px 0; }
+.check { display: flex !important; align-items: flex-start; gap: 9px; line-height: 1.5; }
+.check input { margin-top: 5px; }
+.showcase { margin: 0; }
+.showcase img { width: 100%; display: block; aspect-ratio: 4/3; object-fit: cover; border-radius: 4px; }
+.showcase figcaption { color: var(--subtle); margin-top: 10px; font-size: 14px; }
+@media (max-width: 740px) { .hero, .split { grid-template-columns: 1fr; } }
