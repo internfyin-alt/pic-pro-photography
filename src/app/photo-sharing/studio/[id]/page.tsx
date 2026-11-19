@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import QRCode from 'qrcode';
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
 import EventManager from '@/components/event-photos/EventManager';
-import { dbRequired, dbResult, ownedEvent, photoActor, PhotoError, requestUrl } from '@/lib/event-photos/server';
+import { dbRequired, dbResult, ownedEvent, photoActor, PhotoError } from '@/lib/event-photos/server';
+import { guestShareUrl } from '@/lib/event-photos/share-url';
 import styles from '../../sharing.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -14,15 +14,14 @@ export default async function ManageEvent({ params }: { params: Promise<{ id: st
   try {
     const actor = await photoActor();
     const event = await ownedEvent(actor.db, (await params).id, actor.user.id, actor.admin);
-    const origin = (await headers()).get('origin') || undefined;
-    const url = requestUrl('/photo-sharing/g/' + event.share_token, origin);
-    const qr = await QRCode.toDataURL(url, { width: 440, margin: 3, errorCorrectionLevel: 'M' });
+    const url = guestShareUrl(event.share_token);
+    const share = url ? { url, qr: await QRCode.toDataURL(url, { width: 440, margin: 3, errorCorrectionLevel: 'M' }) } : null;
     const activity = dbRequired(await actor.db.from('photo_audit').select('action,result_count,created_at')
       .eq('event_id', event.id).order('created_at', { ascending: false }).limit(20));
     const searches = await actor.db.from('photo_audit').select('id', { count: 'exact', head: true })
       .eq('event_id', event.id).eq('action', 'guest.search');
     dbResult(searches);
-    data = { event, url, qr, activity, searches: searches.count ?? 0, admin: actor.admin && actor.user.id !== event.owner_id };
+    data = { event, share, activity, searches: searches.count ?? 0, admin: actor.admin && actor.user.id !== event.owner_id };
   } catch (error) {
     if (error instanceof PhotoError && error.status === 401) redirect('/photo-sharing/login');
     return <main className={styles.shell}><div className="container"><h1>Event photos</h1>
@@ -40,8 +39,7 @@ export default async function ManageEvent({ params }: { params: Promise<{ id: st
       eventDate={data.event.event_date ?? ''}
       enabled={data.event.sharing_enabled}
       deleting={data.event.deleting}
-      qr={data.qr}
-      url={data.url}
+      share={data.share}
       searches={data.searches}
       admin={data.admin}
     />

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import PublicPhoto from '@/components/PublicPhoto';
 import { images } from '@/lib/content';
 import { features, steps } from './content';
 import styles from './sharing.module.css';
@@ -24,17 +25,19 @@ export default function PhotoSharing() {
               <Link href="/photo-sharing/login">Photographer login</Link>
             </div>
           </div>
-          <div className={styles.heroVisual} style={{ backgroundImage: 'url(' + images.couple + ')' }} role="img" aria-label="Wedding photography showcase" />
+          <div className={styles.heroVisual}>
+            <PublicPhoto photo={images.couple} alt="Wedding photography showcase" className="photo-cover" sizes="(max-width: 740px) calc(100vw - 36px), max(45vw, 600px)" />
+          </div>
         </section>
         <section className={styles.section}>
           <h2>Every event, in focus</h2>
           <div className={styles.columns}>
-            {[
+            {([
               ['Weddings', images.wedding],
               ['Engagements', images.engagement],
               ['Celebrations', images.birthday],
-            ].map(([label, image]) => <figure className={styles.showcase} key={label}>
-              <img src={image} alt={label + ' photo showcase'} loading="lazy" />
+            ] as const).map(([label, image]) => <figure className={styles.showcase} key={label}>
+              <PublicPhoto photo={image} alt={label + ' photo showcase'} sizes="(max-width: 469px) calc(100vw - 36px), (max-width: 709px) calc(50vw - 33px), (max-width: 1240px) calc((100vw - 80px) / 3), 387px" />
               <figcaption>{label}</figcaption>
             </figure>)}
           </div>

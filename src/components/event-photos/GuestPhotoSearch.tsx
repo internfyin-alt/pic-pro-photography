@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { consentVersion, maxSelfieBytes, photoMimeTypes } from '@/lib/event-photos/constants';
 import { photoMessage, photoRequest, startDownload } from '@/lib/event-photos/client';
 import styles from '@/app/photo-sharing/sharing.module.css';
@@ -61,19 +61,21 @@ export default function GuestPhotoSearch({ token }: { token: string }) {
     }
   }
 
-  function search(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selfie) { setStatus('Take or choose a selfie first.'); return; }
-    const consent = new FormData(event.currentTarget).get('consent');
+  function search(file: File, consent: FormDataEntryValue | null) {
+    if (busy) return;
+    if (consent !== consentVersion) {
+      setStatus('Accept the consent notice before searching.');
+      return;
+    }
     void run(async () => {
       const form = new FormData();
-      form.set('consent', String(consent));
+      form.set('consent', consent);
       let photo;
       try {
-        photo = await prepareSelfie(selfie);
+        photo = await prepareSelfie(file);
       } catch (error) {
-        if (!photoMimeTypes.includes(selfie.type) || selfie.size > maxSelfieBytes) throw error;
-        photo = selfie;
+        if (!photoMimeTypes.includes(file.type) || file.size > maxSelfieBytes) throw error;
+        photo = file;
       }
       form.set('selfie', photo, 'selfie.' + (photo.type === 'image/png' ? 'png' : photo.type === 'image/webp' ? 'webp' : 'jpg'));
       const matches = await photoRequest<Result>(endpoint, 'POST', form);
@@ -82,6 +84,20 @@ export default function GuestPhotoSearch({ token }: { token: string }) {
       setSelfie(undefined);
       setSelected([]);
     });
+  }
+
+  function submitSelfie(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selfie) { setStatus('Take or choose a selfie first.'); return; }
+    search(selfie, new FormData(event.currentTarget).get('consent'));
+  }
+
+  function captureSelfie(event: ChangeEvent<HTMLInputElement>) {
+    const { files, form } = event.currentTarget;
+    const photo = files?.[0];
+    if (!photo || !form) return;
+    setSelfie(photo);
+    search(photo, new FormData(form).get('consent'));
   }
 
   function accessPhoto(id: string, name: string, download: boolean) {
@@ -135,11 +151,11 @@ export default function GuestPhotoSearch({ token }: { token: string }) {
   }
 
   return <>
-    {!result && <form onSubmit={search} className={styles.narrow + ' ' + styles.card + ' ' + styles.stack}>
+    {!result && <form onSubmit={submitSelfie} className={styles.narrow + ' ' + styles.card + ' ' + styles.stack}>
       <h2>Find my photos</h2>
       <p>Use a well-lit selfie of yourself with one face. PIC PRO sends it to Amazon Rekognition to search faces indexed for this event. The app does not store your selfie. Results are temporary and may include incorrect matches.</p>
       <label className={styles.check}><input required name="consent" value={consentVersion} type="checkbox" />I am using my own selfie and consent to processing it and my facial features for this event search.</label>
-      <label><span>Take a selfie</span><input type="file" className="field" accept="image/*" capture="user" onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
+      <label><span>Take a selfie</span><input type="file" className="field" accept="image/*" capture="user" onChange={captureSelfie} disabled={busy} /></label>
       <label><span>Or choose a saved selfie</span><input type="file" className="field" accept={photoMimeTypes.join(',')} onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
       {selfie && <small>Selected: {selfie.name}</small>}
       <button type="submit" className={styles.primary} disabled={busy}>{busy ? 'Searching…' : 'Find my photos'}</button>

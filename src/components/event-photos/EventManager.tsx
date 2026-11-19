@@ -16,13 +16,12 @@ type Settings = {
   eventDate: string;
   enabled: boolean;
   deleting: boolean;
-  qr: string;
-  url: string;
+  share: { qr: string; url: string } | null;
   searches: number;
   admin: boolean;
 };
 
-export default function EventManager({ id, title, eventType, eventDate, enabled, deleting, qr, url, searches, admin }: Settings) {
+export default function EventManager({ id, title, eventType, eventDate, enabled, deleting, share, searches, admin }: Settings) {
   const api = '/api/photo-events/' + id;
   const router = useRouter();
   const [list, setList] = useState<Listing>({ photos: [], total: 0, pending: 0 });
@@ -217,15 +216,20 @@ export default function EventManager({ id, title, eventType, eventDate, enabled,
         <section className={styles.card}>
           <h2>Guest QR code</h2>
           <p>{enabled ? 'Anyone with the link can open the selfie search for this event.' : 'Sharing is paused. Enable it before giving guests the QR code.'}</p>
-          <img src={qr} alt="QR code for this event’s selfie search" className={styles.qr} />
+          {share
+            ? <img src={share.qr} alt="QR code for this event’s selfie search" className={styles.qr} />
+            : <p>Set NEXT_PUBLIC_SITE_URL to the live HTTPS website in Vercel and redeploy to generate a guest QR code.</p>}
           <div className={styles.stack}>
             <button type="button" disabled={busy} onClick={changeSharing} className={styles.primary}>{enabled ? 'Pause sharing' : 'Enable sharing'}</button>
-            <button type="button" disabled={busy} onClick={() => void operate(async () => {
-              await navigator.clipboard.writeText(url);
-              setStatus('Guest link copied.');
-            })} className={styles.secondary}>Copy guest link</button>
-            <a href={qr} download="picpro-event-qr.png" className={styles.secondary}>Download QR</a>
-            <button type="button" disabled={busy} onClick={rotate} className={styles.secondary}>Replace QR code</button>
+            {share && <>
+              {enabled && <a href={share.url} target="_blank" rel="noreferrer" className={styles.secondary}>Open guest link</a>}
+              <button type="button" disabled={busy} onClick={() => void operate(async () => {
+                await navigator.clipboard.writeText(share.url);
+                setStatus('Guest link copied.');
+              })} className={styles.secondary}>Copy guest link</button>
+              <a href={share.qr} download="picpro-event-qr.png" className={styles.secondary}>Download QR</a>
+              <button type="button" disabled={busy} onClick={rotate} className={styles.secondary}>Replace QR code</button>
+            </>}
           </div>
         </section>
         <section className={styles.card}><h2>Delete event</h2><button type="button" disabled={busy} onClick={deleteEvent} className={styles.secondary}>Delete event and photos</button></section>
