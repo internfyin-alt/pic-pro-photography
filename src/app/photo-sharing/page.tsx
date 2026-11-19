@@ -54,14 +54,14 @@ export default function PhotoSharing() {
         <section className={styles.section}>
           <div className={styles.columns}>
             <article className={styles.card}><h3>For photographers</h3><p>Manage uploads, access links and processing together.</p></article>
-            <article className={styles.card}><h3>For guests</h3><p>Scan your event’s QR code, take a selfie and save your photos without creating an account.</p></article>
-            <article className={styles.card}><h3>Privacy and access</h3><p>{features[5][1]} A selfie is processed in memory, and guests can end their matching session at any time.</p></article>
+            <article className={styles.card}><h3>For guests</h3><p>Scan your event’s QR code, register with a selfie and save your personal link to find your photos after the event.</p></article>
+            <article className={styles.card}><h3>Privacy and access</h3><p>{features[5][1]} Guests can delete their saved selfie and registration through their personal link.</p></article>
           </div>
         </section>
         <section className={styles.section}>
           <h2>Frequently Asked Questions</h2>
           <details className={styles.details}><summary>How do I open my event gallery?</summary><p>Scan the QR code supplied by your photographer. Each code is specific to one event.</p></details>
-          <details className={styles.details}><summary>What happens to my selfie?</summary><p>It is sent to the face-matching service for this search. PIC PRO does not save it in the event gallery or database.</p></details>
+          <details className={styles.details}><summary>What happens to my selfie?</summary><p>PIC PRO stores it privately with your registration for up to 30 days and uses Amazon Rekognition to find matches in this event. You can delete your registration from your personal link.</p></details>
           <details className={styles.details}><summary>Why might a photo be missing?</summary><p>Lighting, pose, image quality and ongoing uploads can affect the results. Ask your photographer for help locating a missing photo.</p></details>
         </section>
         <section className={styles.section}>

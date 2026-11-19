@@ -1,16 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { consentVersion, maxSelfieBytes, photoMimeTypes } from '@/lib/event-photos/constants';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { consentVersion, guestRegistrationDays, maxSelfieBytes, photoMimeTypes } from '@/lib/event-photos/constants';
 import { photoMessage, photoRequest, startDownload } from '@/lib/event-photos/client';
 import styles from '@/app/photo-sharing/sharing.module.css';
 
 type Result = {
+  status: 'found';
   session: string;
   expiresAt: string;
+  registrationExpiresAt: string;
   photos: { id: string; name: string; size: number; previewUrl?: string }[];
 };
 type DownloadFile = { id: string; name: string; url: string };
+type MatchStatus = Result | { status: 'waiting'; registrationExpiresAt: string };
 
 async function prepareSelfie(file: File) {
   const image = await createImageBitmap(file);
@@ -32,10 +35,14 @@ async function prepareSelfie(file: File) {
   }
 }
 
-export default function GuestPhotoSearch({ token }: { token: string }) {
+export default function GuestPhotoSearch({ token, wedding }: { token: string; wedding: boolean }) {
   const endpoint = '/api/event-guest/' + token;
   const [selfie, setSelfie] = useState<File>();
   const [result, setResult] = useState<Result>();
+  const [personalLink, setPersonalLink] = useState<string>();
+  const [linkExpiresAt, setLinkExpiresAt] = useState<string>();
+  const [loadingLink, setLoadingLink] = useState(true);
+  const [waiting, setWaiting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [status, setStatus] = useState('');
   const [preview, setPreview] = useState<{ url: string; name: string }>();
@@ -49,7 +56,7 @@ export default function GuestPhotoSearch({ token }: { token: string }) {
     return () => window.clearTimeout(timer);
   }, [result]);
 
-  async function run(callback: () => Promise<void>) {
+  const run = useCallback(async (callback: () => Promise<void>) => {
     setBusy(true);
     setStatus('');
     try {
@@ -59,17 +66,37 @@ export default function GuestPhotoSearch({ token }: { token: string }) {
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
-  function search(file: File, consent: FormDataEntryValue | null) {
-    if (busy) return;
-    if (consent !== consentVersion) {
-      setStatus('Accept the consent notice before searching.');
+  const findMatches = useCallback(async (accessKey: string) => {
+    const matches = await photoRequest<MatchStatus>(endpoint, 'POST', { action: 'find', accessKey });
+    setLinkExpiresAt(matches.registrationExpiresAt);
+    setWaiting(matches.status === 'waiting');
+    setResult(matches.status === 'found' ? matches : undefined);
+    setExpired(false);
+    setSelected([]);
+  }, [endpoint]);
+
+  const loadedLink = useRef(false);
+  useEffect(() => {
+    if (loadedLink.current) return;
+    loadedLink.current = true;
+    const accessKey = new URLSearchParams(window.location.hash.slice(1)).get('access');
+    setLoadingLink(false);
+    if (!accessKey || !/^[a-f0-9]{48}$/.test(accessKey)) return;
+    setPersonalLink(accessKey);
+    void run(() => findMatches(accessKey));
+  }, [findMatches, run]);
+
+  function register(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selfie || busy) {
+      if (!busy) setStatus('Take or choose a selfie first.');
       return;
     }
+    const file = selfie;
+    const form = new FormData(event.currentTarget);
     void run(async () => {
-      const form = new FormData();
-      form.set('consent', consent);
       let photo;
       try {
         photo = await prepareSelfie(file);
@@ -78,26 +105,29 @@ export default function GuestPhotoSearch({ token }: { token: string }) {
         photo = file;
       }
       form.set('selfie', photo, 'selfie.' + (photo.type === 'image/png' ? 'png' : photo.type === 'image/webp' ? 'webp' : 'jpg'));
-      const matches = await photoRequest<Result>(endpoint, 'POST', form);
-      setResult(matches);
-      setExpired(false);
+      const registration = await photoRequest<{ accessKey: string; expiresAt: string }>(endpoint, 'POST', form);
+      window.history.replaceState(null, '', '#access=' + registration.accessKey);
+      setPersonalLink(registration.accessKey);
+      setLinkExpiresAt(registration.expiresAt);
       setSelfie(undefined);
-      setSelected([]);
+      await findMatches(registration.accessKey);
     });
   }
 
-  function submitSelfie(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selfie) { setStatus('Take or choose a selfie first.'); return; }
-    search(selfie, new FormData(event.currentTarget).get('consent'));
-  }
-
-  function captureSelfie(event: ChangeEvent<HTMLInputElement>) {
-    const { files, form } = event.currentTarget;
-    const photo = files?.[0];
-    if (!photo || !form) return;
-    setSelfie(photo);
-    search(photo, new FormData(form).get('consent'));
+  function forget() {
+    if (!personalLink || !window.confirm('Delete your saved selfie, registration details, and personal photo link?')) return;
+    void run(async () => {
+      await photoRequest(endpoint, 'POST', { action: 'forget', accessKey: personalLink });
+      window.history.replaceState(null, '', window.location.pathname);
+      dialog.current?.close();
+      setPersonalLink(undefined);
+      setLinkExpiresAt(undefined);
+      setResult(undefined);
+      setWaiting(false);
+      setExpired(false);
+      setSelected([]);
+      setStatus('Your registration was deleted.');
+    });
   }
 
   function accessPhoto(id: string, name: string, download: boolean) {
@@ -151,22 +181,41 @@ export default function GuestPhotoSearch({ token }: { token: string }) {
   }
 
   return <>
-    {!result && <form onSubmit={submitSelfie} className={styles.narrow + ' ' + styles.card + ' ' + styles.stack}>
-      <h2>Find my photos</h2>
-      <p>Use a well-lit selfie of yourself with one face. PIC PRO sends it to Amazon Rekognition to search faces indexed for this event. The app does not store your selfie. Results are temporary and may include incorrect matches.</p>
-      <label className={styles.check}><input required name="consent" value={consentVersion} type="checkbox" />I am using my own selfie and consent to processing it and my facial features for this event search.</label>
-      <label><span>Take a selfie</span><input type="file" className="field" accept="image/*" capture="user" onChange={captureSelfie} disabled={busy} /></label>
-      <label><span>Or choose a saved selfie</span><input type="file" className="field" accept={photoMimeTypes.join(',')} onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
+    {!loadingLink && !personalLink && <form onSubmit={register} className={styles.narrow + ' ' + styles.card + ' ' + styles.stack}>
+      <h2>Register for your event photos</h2>
+      <p>Save your personal link and return after the photographer uploads the photos.</p>
+      <label><span>Full name</span><input name="name" className="field" autoComplete="name" maxLength={100} required disabled={busy} /></label>
+      <label><span>Phone number</span><input name="phone" type="tel" className="field" autoComplete="tel" maxLength={24} required disabled={busy} /></label>
+      <label><span>Location (city or town)</span><input name="location" className="field" autoComplete="address-level2" maxLength={100} required disabled={busy} /></label>
+      <label><span>{wedding ? 'Relationship to the groom (dulha)' : 'Relationship to the host'}</span><input name="relationship" className="field" maxLength={80} required disabled={busy} /></label>
+      <label><span>Take a selfie</span><input type="file" className="field" accept="image/*" capture="user" onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
+      <label><span>Or upload a saved selfie</span><input type="file" className="field" accept={photoMimeTypes.join(',')} onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
       {selfie && <small>Selected: {selfie.name}</small>}
-      <button type="submit" className={styles.primary} disabled={busy}>{busy ? 'Searching…' : 'Find my photos'}</button>
+      <p>Use a clear selfie with one face. PIC PRO keeps your registration and selfie private for {guestRegistrationDays} days and uses Amazon Rekognition to check for matching event photos. You can delete your registration from your personal link. Face matching can include incorrect results.</p>
+      <label className={styles.check}><input required name="consent" value={consentVersion} type="checkbox" disabled={busy} />I am using my own selfie and consent to storing my registration and processing my selfie for this event.</label>
+      <button type="submit" className={styles.primary} disabled={busy}>{busy ? 'Registering…' : 'Register for photos'}</button>
     </form>}
+    {personalLink && <section className={styles.card + ' ' + styles.stack}>
+      <h2>Your personal photo link</h2>
+      <p>Copy this link so you can return after the event. Keep it private. Anyone with the link can view your matches.</p>
+      {linkExpiresAt && <p>Available until {new Date(linkExpiresAt).toLocaleDateString()}.</p>}
+      {waiting && <p role="status">The photographer’s photos are still pending. Come back here after the upload.</p>}
+      <div className={styles.actions}>
+        <button className={styles.secondary} type="button" disabled={busy} onClick={() => void run(async () => {
+          await navigator.clipboard.writeText(window.location.href);
+          setStatus('Personal link copied.');
+        })}>Copy personal link</button>
+        <button className={styles.primary} type="button" disabled={busy} onClick={() => void run(() => findMatches(personalLink))}>{busy ? 'Please wait…' : 'Check for photos'}</button>
+        <button className={styles.secondary} type="button" disabled={busy} onClick={forget}>Delete registration</button>
+      </div>
+    </section>}
     {result && <section>
       <div className={styles.toolbar}>
         <h2>{expired ? 'Search expired' : result.photos.length + ' matching photos'}</h2>
         <button className={styles.secondary} type="button" disabled={busy} onClick={clear}>{expired ? 'Start a new search' : 'End search and clear session'}</button>
       </div>
       {!expired && <>
-        {!result.photos.length && <p>No matches were found. Try another selfie or ask the photographer about uploads.</p>}
+        {!result.photos.length && <p>No matches were found in the photos uploaded so far. Check back after the photographer finishes uploading.</p>}
         {!!result.photos.length && <div className={styles.actions} style={{ marginBottom: 20 }}>
           <button className={styles.primary} type="button" disabled={busy} onClick={() => zip(result.photos.map(photo => photo.id))}>Download all</button>
           <button className={styles.secondary} type="button" disabled={busy || !selected.length} onClick={() => zip(selected)}>Download selected ({selected.length})</button>

@@ -17,6 +17,7 @@ async function run(request: Request) {
     const db = photoDb();
     const now = new Date().toISOString();
     dbResult(await db.from('photo_guest_sessions').delete().lt('expires_at', now));
+    dbResult(await db.from('photo_guest_registrations').delete().lt('expires_at', now));
     const retention = Date.now() - 48 * 60 * 60 * 1000;
     dbResult(await db.from('photo_rate_limits').delete().lt('bucket', Math.floor(retention / 60_000)));
     const oldUploads = dbRequired(await db.from('event_photos').select('id')

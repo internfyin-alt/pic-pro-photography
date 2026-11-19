@@ -18,13 +18,13 @@ function named(error: unknown, name: string) {
   return error instanceof Error && error.name === name;
 }
 
-async function imageBytes(input: ArrayBuffer) {
+async function imageBytes(input: ArrayBuffer, maxSize = 1920) {
   try {
     const pipeline = sharp(Buffer.from(input), { limitInputPixels: 60_000_000 });
     const { format } = await pipeline.metadata();
     if (!format || !['jpeg', 'png', 'webp'].includes(format)) throw new Error('unsupported format');
     const image = await pipeline.rotate().resize({
-      width: 1920, height: 1920, fit: 'inside', withoutEnlargement: true,
+      width: maxSize, height: maxSize, fit: 'inside', withoutEnlargement: true,
     }).flatten({ background: '#fff' }).jpeg({ quality: 82 }).toBuffer();
     return image;
   } catch {
@@ -102,14 +102,23 @@ export async function processNextPhoto(db: PhotoDb, eventId?: string) {
   return true;
 }
 
-export async function matchSelfie(eventId: string, selfie: ArrayBuffer) {
-  const client = recognition();
-  const Image = { Bytes: await imageBytes(selfie) };
+async function checkSelfie(client: RekognitionClient, Image: { Bytes: Uint8Array }) {
   const detected = await client.send(new DetectFacesCommand({ Image }));
   if (detected.FaceDetails?.length !== 1) {
     throw new PhotoError('Use a clear selfie with exactly one face.');
   }
+}
 
+export async function prepareRegistrationSelfie(selfie: ArrayBuffer) {
+  const bytes = await imageBytes(selfie, 960);
+  if (bytes.length > 1024 * 1024) throw new PhotoError('Choose a smaller selfie.');
+  await checkSelfie(recognition(), { Bytes: bytes });
+  return bytes;
+}
+
+export async function matchSelfie(eventId: string, selfie: Uint8Array) {
+  const client = recognition();
+  const Image = { Bytes: selfie };
   try {
     const matches = await client.send(new SearchFacesByImageCommand({
       Image, CollectionId: collection(eventId), MaxFaces: maxGuestMatches * 4,

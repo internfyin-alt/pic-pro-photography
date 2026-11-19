@@ -18,10 +18,11 @@ type Settings = {
   deleting: boolean;
   share: { qr: string; url: string } | null;
   searches: number;
+  registrations: number;
   admin: boolean;
 };
 
-export default function EventManager({ id, title, eventType, eventDate, enabled, deleting, share, searches, admin }: Settings) {
+export default function EventManager({ id, title, eventType, eventDate, enabled, deleting, share, searches, registrations, admin }: Settings) {
   const api = '/api/photo-events/' + id;
   const router = useRouter();
   const [list, setList] = useState<Listing>({ photos: [], total: 0, pending: 0 });
@@ -175,6 +176,7 @@ export default function EventManager({ id, title, eventType, eventDate, enabled,
       <div className={styles.counter}><strong>{list.total}</strong>Photos</div>
       <div className={styles.counter}><strong>{list.pending}</strong>Queued or processing</div>
       <div className={styles.counter}><strong>{searches}</strong>Guest searches</div>
+      <div className={styles.counter}><strong>{registrations}</strong>Active guest registrations</div>
     </div>
     <p className={styles.status} role="status">{status}</p>
     {deleting ? <section className={styles.card}><h2>Deletion pending</h2><p>Guest access is paused. Continue deleting the files and indexed faces.</p>
@@ -215,7 +217,7 @@ export default function EventManager({ id, title, eventType, eventDate, enabled,
         </form>
         <section className={styles.card}>
           <h2>Guest QR code</h2>
-          <p>{enabled ? 'Anyone with the link can open the selfie search for this event.' : 'Sharing is paused. Enable it before giving guests the QR code.'}</p>
+          <p>{enabled ? 'Guests can scan this event’s QR and register before you upload photos.' : 'Sharing is paused. Enable it before giving guests the QR code.'}</p>
           {share
             ? <img src={share.qr} alt="QR code for this event’s selfie search" className={styles.qr} />
             : <p>Set NEXT_PUBLIC_SITE_URL to the live HTTPS website in Vercel and redeploy to generate a guest QR code.</p>}

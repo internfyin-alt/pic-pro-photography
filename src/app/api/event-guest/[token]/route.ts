@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { consentVersion, guestSessionMinutes, maxSelfieBytes, originalBucket, photoMimeTypes } from '@/lib/event-photos/constants';
-import { matchSelfie } from '@/lib/event-photos/recognition';
+import { consentVersion, guestRegistrationDays, guestSessionMinutes, maxSelfieBytes, originalBucket, photoMimeTypes } from '@/lib/event-photos/constants';
+import { matchSelfie, prepareRegistrationSelfie } from '@/lib/event-photos/recognition';
 import {
   audit, dbRequired, dbResult, hashToken, photoDb, PhotoError, photoFailure, photoJson, previewPath, secretToken,
   sharedEvent, signedPhoto, type EventPhoto, type PhotoDb, validToken,
@@ -14,7 +14,17 @@ const guestAction = z.discriminatedUnion('action', [
   z.object({ action: z.literal('download'), session: z.string(), photoId: z.string().uuid() }),
   z.object({ action: z.literal('batch'), session: z.string(), photoIds: z.array(z.string().uuid()).min(1).max(100) }),
   z.object({ action: z.literal('clear'), session: z.string() }),
+  z.object({ action: z.literal('find'), accessKey: z.string() }),
+  z.object({ action: z.literal('forget'), accessKey: z.string() }),
 ]);
+
+const guestDetails = z.object({
+  name: z.string().trim().min(1).max(100),
+  phone: z.string().trim().max(24).regex(/^\+?[\d ()-]+$/)
+    .refine(phone => /^\d{7,15}$/.test(phone.replace(/\D/g, ''))),
+  location: z.string().trim().min(1).max(100),
+  relationship: z.string().trim().min(1).max(80),
+});
 
 async function limit(db: PhotoDb, scope: string, minutes: number, maximum: number) {
   const allowed = dbResult(await db.rpc('consume_photo_limit', {
@@ -23,36 +33,68 @@ async function limit(db: PhotoDb, scope: string, minutes: number, maximum: numbe
   if (!allowed) throw new PhotoError('Too many attempts right now. Please try again later.', 429);
 }
 
-async function search(request: Request, token: string, db: PhotoDb) {
+async function register(request: Request, token: string, db: PhotoDb) {
   const contentLength = Number(request.headers.get('content-length'));
   if (contentLength > maxSelfieBytes + 16_384) throw new PhotoError('Choose a selfie under 3 MB.', 413);
   const event = await sharedEvent(db, token);
   const source = request.headers.get('x-vercel-forwarded-for') || request.headers.get('x-forwarded-for') || 'unknown';
-  await limit(db, 'guest:' + hashToken(token + ':' + source.split(',')[0]), 1, 5);
-  await limit(db, 'event:' + event.id, 1, 120);
+  await limit(db, 'register:' + hashToken(token + ':' + source.split(',')[0]), 1, 20);
+  await limit(db, 'register-event:' + event.id, 1, 120);
   const form = await request.formData();
   const selfie = form.get('selfie');
-  if (form.get('consent') !== consentVersion) throw new PhotoError('Review and accept the consent before searching.');
+  if (form.get('consent') !== consentVersion) throw new PhotoError('Review and accept the consent before registering.');
+  const details = guestDetails.safeParse({
+    name: form.get('name'), phone: form.get('phone'), location: form.get('location'), relationship: form.get('relationship'),
+  });
+  if (!details.success) throw new PhotoError('Enter your name, a valid phone number, city or town, and relationship.');
   if (!(selfie instanceof File) || selfie.size === 0 || selfie.size > maxSelfieBytes || !photoMimeTypes.includes(selfie.type)) {
     throw new PhotoError('Choose a JPG, PNG or WebP selfie under 3 MB.');
   }
 
-  const ids = await matchSelfie(event.id, await selfie.arrayBuffer());
+  const bytes = await prepareRegistrationSelfie(await selfie.arrayBuffer());
+  await sharedEvent(db, token);
+  const accessKey = secretToken();
+  const expiresAt = new Date(Date.now() + guestRegistrationDays * 86_400_000).toISOString();
+  dbResult(await db.from('photo_guest_registrations').insert({
+    token_hash: hashToken(accessKey), event_id: event.id, guest_name: details.data.name,
+    phone: details.data.phone, location: details.data.location, relationship: details.data.relationship,
+    selfie_jpeg: '\\x' + bytes.toString('hex'), consent_version: consentVersion, expires_at: expiresAt,
+  }));
+  return photoJson({ accessKey, expiresAt }, 201);
+}
+
+async function find(db: PhotoDb, token: string, registrationHash: string) {
+  const event = await sharedEvent(db, token);
+  const registration = dbResult(await db.from('photo_guest_registrations').select('expires_at')
+    .eq('event_id', event.id).eq('token_hash', registrationHash).gt('expires_at', new Date().toISOString()).maybeSingle());
+  if (!registration) throw new PhotoError('This personal link has expired or was removed. Scan the event QR to register again.', 404);
+  await limit(db, 'registered-guest:' + registrationHash, 1, 5);
+  await limit(db, 'event:' + event.id, 1, 120);
+  const ready = dbRequired(await db.from('event_photos').select('id').eq('event_id', event.id).eq('status', 'ready').limit(1));
+  if (!ready.length) return photoJson({ status: 'waiting', registrationExpiresAt: registration.expires_at });
+
+  const saved = dbResult(await db.from('photo_guest_registrations').select('selfie_jpeg')
+    .eq('event_id', event.id).eq('token_hash', registrationHash).gt('expires_at', new Date().toISOString()).maybeSingle());
+  if (!saved) throw new PhotoError('This personal link has expired or was removed.', 404);
+  const ids = await matchSelfie(event.id, Buffer.from(saved.selfie_jpeg.slice(2), 'hex'));
   await sharedEvent(db, token);
   const photos = ids.length ? dbRequired(await db.from('event_photos')
     .select('id,file_name,byte_size,storage_path').eq('event_id', event.id).eq('status', 'ready').in('id', ids)) : [];
   const session = secretToken();
-  const expiresAt = new Date(Date.now() + guestSessionMinutes * 60_000).toISOString();
+  const now = Date.now();
+  const registrationExpiry = Date.parse(registration.expires_at);
+  if (registrationExpiry <= now) throw new PhotoError('This personal link has expired.', 404);
+  const expiresAt = new Date(Math.min(registrationExpiry, now + guestSessionMinutes * 60_000)).toISOString();
   dbResult(await db.from('photo_guest_sessions').insert({
     token_hash: hashToken(session), event_id: event.id, consent_version: consentVersion,
-    photo_ids: photos.map(photo => photo.id), expires_at: expiresAt,
+    photo_ids: photos.map(photo => photo.id), expires_at: expiresAt, registration_token_hash: registrationHash,
   }));
   await audit(db, 'guest.search', event.id, undefined, photos.length);
   const previews = photos.length ? dbRequired(await db.storage.from(originalBucket)
     .createSignedUrls(photos.map(photo => previewPath(photo.storage_path)), 60)) : [];
   const urls = new Map(previews.map(preview => [preview.path, preview.signedUrl]));
   return photoJson({
-    session, expiresAt,
+    status: 'found', session, expiresAt, registrationExpiresAt: registration.expires_at,
     photos: photos.map(photo => ({ id: photo.id, name: photo.file_name, size: photo.byte_size, previewUrl: urls.get(previewPath(photo.storage_path)) })),
   });
 }
@@ -61,10 +103,20 @@ export async function POST(request: Request, { params }: Context) {
   try {
     const token = (await params).token;
     const db = photoDb();
-    if (request.headers.get('content-type')?.startsWith('multipart/form-data')) return await search(request, token, db);
+    if (request.headers.get('content-type')?.startsWith('multipart/form-data')) return await register(request, token, db);
     const parsed = guestAction.safeParse(await request.json());
-    if (!parsed.success || !validToken(parsed.data.session)) throw new PhotoError('Invalid session.');
+    if (!parsed.success) throw new PhotoError('Invalid request.');
     const input = parsed.data;
+    if (input.action === 'find' || input.action === 'forget') {
+      if (!validToken(input.accessKey)) throw new PhotoError('Invalid personal link.');
+      const registrationHash = hashToken(input.accessKey);
+      if (input.action === 'find') return await find(db, token, registrationHash);
+      const event = dbResult(await db.from('photo_events').select('id').eq('share_token', token).maybeSingle());
+      if (event) dbResult(await db.from('photo_guest_registrations').delete()
+        .eq('token_hash', registrationHash).eq('event_id', event.id));
+      return photoJson({ ok: true });
+    }
+    if (!validToken(input.session)) throw new PhotoError('Invalid session.');
     const tokenHash = hashToken(input.session);
 
     if (input.action === 'clear') {

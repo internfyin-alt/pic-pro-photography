@@ -14,6 +14,6 @@ export const steps = [
   ['Create your event', 'Enter the event name and type, and confirm that you have permission to process its photographs.'],
   ['Upload and index', 'Upload your originals. The studio shows which photos are queued, ready or need attention.'],
   ['Share the QR code', 'Turn on guest access, then display or send the event QR code.'],
-  ['Find your photographs', 'Guests review the consent notice and use a single selfie to search within that event.'],
+  ['Find your photographs', 'Guests register with a selfie and save a personal link to find their matches after the event.'],
   ['Preview and download', 'Guests can view their matches, save originals and end their temporary session.'],
 ];

@@ -18,10 +18,15 @@ export default async function ManageEvent({ params }: { params: Promise<{ id: st
     const share = url ? { url, qr: await QRCode.toDataURL(url, { width: 440, margin: 3, errorCorrectionLevel: 'M' }) } : null;
     const activity = dbRequired(await actor.db.from('photo_audit').select('action,result_count,created_at')
       .eq('event_id', event.id).order('created_at', { ascending: false }).limit(20));
-    const searches = await actor.db.from('photo_audit').select('id', { count: 'exact', head: true })
-      .eq('event_id', event.id).eq('action', 'guest.search');
+    const [searches, registrations] = await Promise.all([
+      actor.db.from('photo_audit').select('id', { count: 'exact', head: true })
+        .eq('event_id', event.id).eq('action', 'guest.search'),
+      actor.db.from('photo_guest_registrations').select('token_hash', { count: 'exact', head: true })
+        .eq('event_id', event.id).gt('expires_at', new Date().toISOString()),
+    ]);
     dbResult(searches);
-    data = { event, share, activity, searches: searches.count ?? 0, admin: actor.admin && actor.user.id !== event.owner_id };
+    dbResult(registrations);
+    data = { event, share, activity, searches: searches.count ?? 0, registrations: registrations.count ?? 0, admin: actor.admin && actor.user.id !== event.owner_id };
   } catch (error) {
     if (error instanceof PhotoError && error.status === 401) redirect('/photo-sharing/login');
     return <main className={styles.shell}><div className="container"><h1>Event photos</h1>
@@ -41,6 +46,7 @@ export default async function ManageEvent({ params }: { params: Promise<{ id: st
       deleting={data.event.deleting}
       share={data.share}
       searches={data.searches}
+      registrations={data.registrations}
       admin={data.admin}
     />
     <section className={styles.section}>
