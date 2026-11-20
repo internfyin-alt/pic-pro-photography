@@ -41,8 +41,16 @@
 .narrow { max-width: 660px; margin-inline: auto; }
 .details { border-bottom: 1px solid var(--line); padding: 17px 0; }
 .details summary { cursor: pointer; font-weight: 700; }
+.details[open] summary, .disclosure[open] summary { margin-bottom: 14px; }
+.disclosure summary { cursor: pointer; font-weight: 700; }
+.deletePhotographer { max-width: min(100%, 330px); }
+.deleteSummary { color: #ffb3a6; padding: 11px 0; }
+.shell .danger { color: #ffb3a6; border-color: #ac6458; }
+.shareActions { margin-top: 16px; }
+.upload input::file-selector-button { cursor: pointer; margin-inline-end: 10px; border: 0; border-radius: 4px; background: var(--champagne); color: #19140d; padding: 6px 10px; font-weight: 700; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
 .status { min-height: 20px; margin: 12px 0; }
+.managerStatus:empty { margin-bottom: -16px; }
 .counter strong { color: var(--champagne); font-size: 26px; display: block; margin-bottom: 6px; }
 .photoList { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
 .photoRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; overflow-wrap: anywhere; }

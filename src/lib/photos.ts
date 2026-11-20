@@ -1,6 +1,6 @@
-// Responsive WebP copies of the public demo photographs.
+// Responsive copies of the public demo photographs.
 // The filename includes a content hash so each version can be cached indefinitely.
-export type Photo = { src: string; width: number; height: number; srcSet: string };
+export type Photo = { src: string; width: number; height: number; srcSet: string; avifSrcSet?: string };
 
 export const images = {
   birthday: {
@@ -37,13 +37,15 @@ export const images = {
     "src": "/photos/hero-2000.a93410a608.webp",
     "width": 2000,
     "height": 1333,
-    "srcSet": "/photos/hero-640.f9821095e8.webp 640w, /photos/hero-960.56828ee93e.webp 960w, /photos/hero-1440.b5ae7d8fed.webp 1440w, /photos/hero-2000.a93410a608.webp 2000w"
+    "srcSet": "/photos/hero-640.f9821095e8.webp 640w, /photos/hero-960.56828ee93e.webp 960w, /photos/hero-1440.b5ae7d8fed.webp 1440w, /photos/hero-2000.a93410a608.webp 2000w",
+    "avifSrcSet": "/photos/hero-640.dcfcdc5066.avif 640w, /photos/hero-960.48fb238745.avif 960w, /photos/hero-1440.b881b69fee.avif 1440w, /photos/hero-2000.e6cce66c37.avif 2000w"
   },
   portrait: {
     "src": "/photos/portrait-1000.2b4336a82d.webp",
     "width": 1000,
     "height": 1500,
-    "srcSet": "/photos/portrait-440.094a65a46c.webp 440w, /photos/portrait-720.1b835a0d1c.webp 720w, /photos/portrait-1000.2b4336a82d.webp 1000w"
+    "srcSet": "/photos/portrait-440.094a65a46c.webp 440w, /photos/portrait-560.29f5cdc437.webp 560w, /photos/portrait-720.1b835a0d1c.webp 720w, /photos/portrait-1000.2b4336a82d.webp 1000w",
+    "avifSrcSet": "/photos/portrait-440.e97c4eaeb5.avif 440w, /photos/portrait-560.61287d6731.avif 560w, /photos/portrait-720.ace78f4e09.avif 720w, /photos/portrait-1000.5c4cdea202.avif 1000w"
   },
   prewedding: {
     "src": "/photos/prewedding-1000.097c5c1054.webp",

@@ -21,7 +21,12 @@
   position: relative;
 }
 
-.hero > .photo-cover, .photo-backdrop > .photo-cover {
+.public-picture {
+  display: contents;
+}
+
+.hero > .photo-cover, .hero > .public-picture > .photo-cover,
+.photo-backdrop > .photo-cover, .photo-backdrop > .public-picture > .photo-cover {
   position: absolute;
   z-index: -2;
 }

@@ -9,8 +9,7 @@ type PublicPhotoProps = {
 };
 
 export default function PublicPhoto({ photo, alt, sizes, className, priority }: PublicPhotoProps) {
-  // These images are already resized and encoded, with immutable URLs.
-  return (
+  const image = (
     <img
       alt={alt}
       className={className}
@@ -23,5 +22,19 @@ export default function PublicPhoto({ photo, alt, sizes, className, priority }: 
       srcSet={photo.srcSet}
       src={photo.src}
     />
+  );
+
+  if (!photo.avifSrcSet) return image;
+
+  return (
+    <>
+      {priority && (
+        <link rel="preload" as="image" type="image/avif" imageSrcSet={photo.avifSrcSet} imageSizes={sizes} fetchPriority="high" />
+      )}
+      <picture className="public-picture">
+        <source type="image/avif" srcSet={photo.avifSrcSet} sizes={sizes} />
+        {image}
+      </picture>
+    </>
   );
 }

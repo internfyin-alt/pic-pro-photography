@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { photographerAuth } from '@/app/photo-sharing/actions';
-import styles from '@/app/photo-sharing/sharing.module.css';
+import SignInForm from '@/components/workspace/SignInForm';
+import SignInPanel from '@/components/workspace/SignInPanel';
+import styles from '@/components/workspace/Workspace.module.css';
 
 const messages: Record<string, string> = {
   invalid: 'Check that you filled in all the required fields.',
@@ -21,18 +23,20 @@ const messages: Record<string, string> = {
 };
 
 export default function PhotographerAuth({ register = false, status }: { register?: boolean; status?: string }) {
-  return <main className={styles.shell}><div className="container"><div className={styles.narrow}>
-    <Link href="/photo-sharing">Event Photo Sharing</Link>
-    <h1>{register ? 'Create a photographer account' : 'Photographer Login'}</h1>
-    <form className={styles.card + ' ' + styles.stack} action={photographerAuth}>
-      <input type="hidden" name="intent" value={register ? 'register' : 'login'} />
-      {register && <label><span>Name or studio name</span><input className="field" name="name" autoComplete="name" required minLength={2} maxLength={100} /></label>}
-      <label><span>Email address</span><input className="field" name="email" type="email" autoComplete="email" required /></label>
-      <label><span>Password</span><input className="field" name="password" type="password" autoComplete={register ? 'new-password' : 'current-password'} minLength={register ? 8 : undefined} maxLength={128} required /></label>
-      {status && messages[status] && <p role="status">{messages[status]}</p>}
-      <button className={styles.primary} type="submit">{register ? 'Create account' : 'Sign in'}</button>
-    </form>
-    <p><Link href={register ? '/photo-sharing/login' : '/photo-sharing/register'}>{register ? 'Already registered? Sign in' : 'Create a photographer account'}</Link></p>
-    {!register && <p><Link href="/photo-sharing/reset">Forgot your password?</Link></p>}
-  </div></div></main>;
+  return (
+    <SignInPanel role="photographer"
+      title={register ? 'Create a photographer account' : 'Photographer sign in'}
+      description={register ? 'Set up your studio to share event photos with guests.' : 'Create events, upload photos and share them with your guests.'}>
+      <div className={styles.stack}>
+        <SignInForm action={photographerAuth} register={register} message={status && Object.hasOwn(messages, status) ? messages[status] : undefined}>
+          <input type="hidden" name="intent" value={register ? 'register' : 'login'} />
+          {register && <label className={styles.fieldLabel}>Name or studio name<input className="field" name="name" autoComplete="name" required minLength={2} maxLength={100} /></label>}
+        </SignInForm>
+        <div className={styles.help}>
+          <Link className={styles.textLink} href={register ? '/photo-sharing/login' : '/photo-sharing/register'}>{register ? 'Already registered? Sign in' : 'Create an account'}</Link>
+          {!register && <Link className={styles.textLink} href="/photo-sharing/reset">Forgot password?</Link>}
+        </div>
+      </div>
+    </SignInPanel>
+  );
 }

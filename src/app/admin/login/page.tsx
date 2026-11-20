@@ -1,1 +1,22 @@
-import {login} from '../login-action';export default async function Page({searchParams}:{searchParams:Promise<{error?:string}>}){const {error}=await searchParams;return <main className="section container" style={{maxWidth:530}}><p className="eyebrow">Private Access</p><h1 className="heading">Admin <em className="gold">Login.</em></h1>{error&&<p style={{color:'#f58b22'}}>Login failed or Supabase is not configured.</p>}<form action={login} className="card" style={{padding:28}}><input type="hidden" name="role" value="admin"/><label>Email<input className="field" name="email" type="email" required/></label><label>Password<input className="field" name="password" type="password" required/></label><button className="btn" style={{marginTop:20}}>Sign In</button></form></main>}
+import SignInForm from '@/components/workspace/SignInForm';
+import SignInPanel from '@/components/workspace/SignInPanel';
+import { login } from '../login-action';
+
+export const metadata = { title: 'Admin Sign In', robots: { index: false } };
+
+const messages: Record<string, string> = {
+  configure: 'Admin sign-in is unavailable. Contact the site owner for help.',
+  invalid: 'Check your admin email and password, then try again.',
+  access: 'This account does not have admin access. Use your admin account to continue.',
+};
+
+export default async function Page({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams;
+  return (
+    <SignInPanel role="admin" title="Admin sign in" description="Manage bookings, enquiries and photo sharing for PIC PRO.">
+      <SignInForm action={login} message={error && Object.hasOwn(messages, error) ? messages[error] : undefined}>
+        <input type="hidden" name="role" value="admin" />
+      </SignInForm>
+    </SignInPanel>
+  );
+}

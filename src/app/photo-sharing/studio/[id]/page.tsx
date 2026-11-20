@@ -15,15 +15,17 @@ export default async function ManageEvent({ params }: { params: Promise<{ id: st
     const actor = await photoActor();
     const event = await ownedEvent(actor.db, (await params).id, actor.user.id, actor.admin);
     const url = guestShareUrl(event.share_token);
-    const share = url ? { url, qr: await QRCode.toDataURL(url, { width: 440, margin: 3, errorCorrectionLevel: 'M' }) } : null;
-    const activity = dbRequired(await actor.db.from('photo_audit').select('action,result_count,created_at')
-      .eq('event_id', event.id).order('created_at', { ascending: false }).limit(20));
-    const [searches, registrations] = await Promise.all([
+    const [qr, activityQuery, searches, registrations] = await Promise.all([
+      url ? QRCode.toDataURL(url, { width: 440, margin: 3, errorCorrectionLevel: 'M' }) : null,
+      actor.db.from('photo_audit').select('action,result_count,created_at')
+        .eq('event_id', event.id).order('created_at', { ascending: false }).limit(20),
       actor.db.from('photo_audit').select('id', { count: 'exact', head: true })
         .eq('event_id', event.id).eq('action', 'guest.search'),
       actor.db.from('photo_guest_registrations').select('token_hash', { count: 'exact', head: true })
         .eq('event_id', event.id).gt('expires_at', new Date().toISOString()),
     ]);
+    const share = url && qr ? { url, qr } : null;
+    const activity = dbRequired(activityQuery);
     dbResult(searches);
     dbResult(registrations);
     data = { event, share, activity, searches: searches.count ?? 0, registrations: registrations.count ?? 0, admin: actor.admin && actor.user.id !== event.owner_id };
@@ -49,13 +51,13 @@ export default async function ManageEvent({ params }: { params: Promise<{ id: st
       registrations={data.registrations}
       admin={data.admin}
     />
-    <section className={styles.section}>
-      <h2>Recent event activity</h2>
+    <details className={styles.shareActions + ' ' + styles.card + ' ' + styles.disclosure}>
+      <summary>Recent event activity</summary>
       {!data.activity.length && <p>No activity yet.</p>}
       <ul className={styles.photoList}>{data.activity.map((entry, index) => <li className={styles.photoRow} key={entry.created_at + index}>
         <span>{entry.action.replaceAll('.', ' ').replaceAll('_', ' ')}{entry.result_count === null ? '' : ' · ' + entry.result_count + ' photos'}</span>
         <time dateTime={entry.created_at}>{entry.created_at.slice(0, 10)}</time>
       </li>)}</ul>
-    </section>
+    </details>
   </div></main>;
 }

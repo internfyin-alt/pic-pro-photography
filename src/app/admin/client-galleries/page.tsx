@@ -1,1 +1,13 @@
-import {requireRole} from '@/lib/auth';import AdminNav from '@/components/AdminNav';import AdminTable from '@/components/AdminTable';export default async function Page(){const {db}=await requireRole('admin');const {data}=await db.from('client_galleries').select('*').limit(100);return <main className="section container"><p className="eyebrow">Studio Management</p><h1 className="heading">Client Galleries</h1><AdminNav/><p className="muted">Database records (first 100). Status changes are available for enquiries and bookings. Other content is managed directly in Supabase Studio in this starter.</p><AdminTable table="client_galleries" initial={(data||[]) as Record<string,unknown>[]}/></main>}
+import { requireRole } from '@/lib/auth';
+import AdminTable from '@/components/AdminTable';
+import AdminPage from '@/components/workspace/AdminPage';
+
+export default async function Page() {
+  const { db } = await requireRole('admin');
+  const { data, error } = await db.from('client_galleries').select('*').limit(100);
+  return (
+    <AdminPage title="Client galleries" description="View up to 100 records. Edit these records in Supabase Studio.">
+      {error ? <p role="alert">Could not load these records. Refresh the page to try again.</p> : <AdminTable table="client_galleries" initial={data ?? []} />}
+    </AdminPage>
+  );
+}

@@ -109,13 +109,42 @@ export async function setPhotographerStatus(form: FormData) {
   const id = String(form.get('id'));
   if (!validId(id)) redirect('/admin/photo-sharing');
   const suspended = form.get('suspended') === 'true';
-  dbResult(await db.from('photo_photographers').update({ suspended }).eq('id', id));
+  const updated = dbResult(await db.from('photo_photographers').update({ suspended })
+    .eq('id', id).is('deleted_at', null).select('id').maybeSingle());
+  if (!updated) redirect('/admin/photo-sharing');
   if (suspended) {
     const events = dbRequired(await db.from('photo_events').select('id').eq('owner_id', id));
     if (events.length) dbResult(await db.from('photo_guest_sessions').delete().in('event_id', events.map(event => event.id)));
   }
   await audit(db, suspended ? 'photographer.suspended' : 'photographer.activated', undefined, user.id, undefined, id);
   redirect('/admin/photo-sharing');
+}
+
+export async function deletePhotographer(form: FormData) {
+  const { db, user } = await photoActor(true);
+  const id = String(form.get('id'));
+  const page = Number(form.get('page'));
+  const back = Number.isInteger(page) && page > 1 && page <= 10_000
+    ? '/admin/photo-sharing?page=' + page + '&'
+    : '/admin/photo-sharing?';
+  if (!validId(id)) redirect(back + 'status=delete-failed');
+
+  let status = 'deleted';
+  try {
+    const profile = dbResult(await db.from('profiles').select('role').eq('id', id).maybeSingle());
+    if (profile?.role === 'admin') {
+      status = 'admin-protected';
+    } else {
+      const removed = dbResult(await db.from('photo_photographers')
+        .update({ deleted_at: new Date().toISOString(), suspended: true })
+        .eq('id', id).is('deleted_at', null).select('id').maybeSingle());
+      if (removed) await audit(db, 'photographer.deleted', undefined, user.id, undefined, id);
+      else status = 'already-removed';
+    }
+  } catch {
+    status = 'delete-failed';
+  }
+  redirect(back + 'status=' + status);
 }
 
 export async function setGuestAccess(form: FormData) {

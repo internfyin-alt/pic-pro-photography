@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { eventTypes, maxPhotoBytes, originalBucket, photoMimeTypes } from '@/lib/event-photos/constants';
 import { photoMessage, photoRequest, startDownload } from '@/lib/event-photos/client';
 import styles from '@/app/photo-sharing/sharing.module.css';
@@ -77,6 +76,7 @@ export default function EventManager({ id, title, eventType, eventDate, enabled,
     void operate(async () => {
       let uploaded = 0;
       const failures: string[] = [];
+      const { createClient } = await import('@supabase/supabase-js');
       const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '', process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '', {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       });
@@ -172,24 +172,18 @@ export default function EventManager({ id, title, eventType, eventDate, enabled,
   }
 
   return <div className={styles.stack}>
-    <div className={styles.columns}>
-      <div className={styles.counter}><strong>{list.total}</strong>Photos</div>
-      <div className={styles.counter}><strong>{list.pending}</strong>Queued or processing</div>
-      <div className={styles.counter}><strong>{searches}</strong>Guest searches</div>
-      <div className={styles.counter}><strong>{registrations}</strong>Active guest registrations</div>
-    </div>
-    <p className={styles.status} role="status">{status}</p>
+    <p className={styles.managerStatus} role="status">{status}</p>
     {deleting ? <section className={styles.card}><h2>Deletion pending</h2><p>Guest access is paused. Continue deleting the files and indexed faces.</p>
       <button type="button" disabled={busy} onClick={deleteEvent} className={styles.secondary}>Continue deletion</button>
     </section> : <div className={styles.split}>
-      <section className={styles.card}>
+      <section className={styles.card + ' ' + styles.stack}>
         <div className={styles.toolbar}>
-          <h2>Event photos</h2>
-          <button type="button" disabled={busy || !list.pending} className={styles.secondary} onClick={() => void operate(processQueue)}>Process queue</button>
+          <h2>Photos{list.total > 0 && ' (' + list.total + ')'}</h2>
+          {list.pending > 0 && <button type="button" disabled={busy} className={styles.secondary} onClick={() => void operate(processQueue)}>Process pending photos ({list.pending})</button>}
         </div>
-        <label><span>Upload photographs</span><input className="field" type="file" multiple accept={photoMimeTypes.join(',')} onChange={upload} disabled={busy} /></label>
-        <p>JPG, PNG or WebP. Up to 25 MB per original.</p>
-        {!list.photos.length && <p>No photos on this page.</p>}
+        <label className={styles.upload}><span>Upload photos</span><input className="field" type="file" multiple accept={photoMimeTypes.join(',')} onChange={upload} disabled={busy} /></label>
+        <p>Choose JPG, PNG or WebP files up to 25 MB each.</p>
+        {!list.photos.length && <p>{list.total ? 'No photos on this page.' : 'Uploaded photos will appear here.'}</p>}
         <ul className={styles.photoList}>{list.photos.map(photo => <li key={photo.id} className={styles.photoRow}>
           <div><strong>{photo.file_name}</strong><br /><small>{photo.status === 'ready' ? photo.face_count + ' faces indexed' : photo.status}</small>{photo.error && <p>{photo.error}</p>}</div>
           <div className={styles.actions}>
@@ -208,33 +202,47 @@ export default function EventManager({ id, title, eventType, eventDate, enabled,
         </div>
       </section>
       <aside className={styles.stack}>
-        <form onSubmit={saveDetails} className={styles.card + ' ' + styles.stack}>
-          <h2>Event details</h2>
-          <label><span>Event name</span><input name="title" className="field" defaultValue={title} minLength={2} maxLength={100} required /></label>
-          <label><span>Event type</span><select name="type" className="field" defaultValue={eventType}>{eventTypes.map(type => <option key={type}>{type}</option>)}</select></label>
-          <label><span>Event date</span><input name="date" type="date" className="field" defaultValue={eventDate} /></label>
-          <button type="submit" disabled={busy} className={styles.secondary}>Save details</button>
-        </form>
         <section className={styles.card}>
-          <h2>Guest QR code</h2>
-          <p>{enabled ? 'Guests can scan this event’s QR and register before you upload photos.' : 'Sharing is paused. Enable it before giving guests the QR code.'}</p>
+          <h2>Share with guests</h2>
+          <p>{enabled ? 'Sharing is on. Guests can open your link or scan the QR code to register.' : 'Sharing is paused. Turn it on before sending the link or QR code.'}</p>
           {share
             ? <img src={share.qr} alt="QR code for this event’s selfie search" className={styles.qr} />
             : <p>Set NEXT_PUBLIC_SITE_URL to the live HTTPS website in Vercel and redeploy to generate a guest QR code.</p>}
-          <div className={styles.stack}>
-            <button type="button" disabled={busy} onClick={changeSharing} className={styles.primary}>{enabled ? 'Pause sharing' : 'Enable sharing'}</button>
+          <div className={styles.actions + ' ' + styles.shareActions}>
+            <button type="button" disabled={busy} onClick={changeSharing} className={enabled ? styles.secondary : styles.primary}>{enabled ? 'Pause sharing' : 'Turn on sharing'}</button>
             {share && <>
-              {enabled && <a href={share.url} target="_blank" rel="noreferrer" className={styles.secondary}>Open guest link</a>}
               <button type="button" disabled={busy} onClick={() => void operate(async () => {
                 await navigator.clipboard.writeText(share.url);
                 setStatus('Guest link copied.');
-              })} className={styles.secondary}>Copy guest link</button>
+              })} className={enabled ? styles.primary : styles.secondary}>Copy guest link</button>
               <a href={share.qr} download="picpro-event-qr.png" className={styles.secondary}>Download QR</a>
-              <button type="button" disabled={busy} onClick={rotate} className={styles.secondary}>Replace QR code</button>
             </>}
           </div>
+          {share && <details className={styles.details}>
+            <summary>Guest link options</summary>
+            <div className={styles.actions}>
+              {enabled && <a href={share.url} target="_blank" rel="noreferrer" className={styles.secondary}>Open guest link</a>}
+              <button type="button" disabled={busy} onClick={rotate} className={styles.secondary}>Replace QR code</button>
+            </div>
+          </details>}
         </section>
-        <section className={styles.card}><h2>Delete event</h2><button type="button" disabled={busy} onClick={deleteEvent} className={styles.secondary}>Delete event and photos</button></section>
+        <details className={styles.card + ' ' + styles.disclosure}>
+          <summary>Event settings</summary>
+          <form onSubmit={saveDetails} className={styles.stack}>
+            <label><span>Event name</span><input name="title" className="field" defaultValue={title} minLength={2} maxLength={100} required /></label>
+            <label><span>Event type</span><select name="type" className="field" defaultValue={eventType}>{eventTypes.map(type => <option key={type}>{type}</option>)}</select></label>
+            <label><span>Event date</span><input name="date" type="date" className="field" defaultValue={eventDate} /></label>
+            <button type="submit" disabled={busy} className={styles.secondary}>Save details</button>
+          </form>
+          <div className={styles.shareActions}>
+            <button type="button" disabled={busy} onClick={deleteEvent} className={styles.secondary}>Delete event and photos</button>
+          </div>
+        </details>
+        <details className={styles.card + ' ' + styles.disclosure}>
+          <summary>Guest activity counts</summary>
+          <p>{searches} guest searches</p>
+          <p>{registrations} active guest registrations</p>
+        </details>
       </aside>
     </div>}
     <dialog ref={dialog} className={styles.dialog} onClose={() => setPreview('')}>

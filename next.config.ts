@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/photos/:name([a-z]+-\\d+\\.[a-f0-9]{10}\\.webp)',
+        source: '/photos/:name([a-z]+-\\d+\\.[a-f0-9]{10}\\.(?:webp|avif))',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
     ];

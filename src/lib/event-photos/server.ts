@@ -71,11 +71,16 @@ export async function photoActor(adminOnly = false) {
   const auth = await supabaseServer();
   const { data: { user } } = await auth.auth.getUser();
   if (!user?.email) throw new PhotoError('Sign in to continue.', 401);
-  const profile = dbResult(await db.from('profiles').select('role').eq('id', user.id).maybeSingle());
+  const [profileQuery, ownerQuery] = await Promise.all([
+    db.from('profiles').select('role').eq('id', user.id).maybeSingle(),
+    db.from('photo_photographers').select('*').eq('id', user.id).maybeSingle(),
+  ]);
+  const profile = dbResult(profileQuery);
   const admin = profile?.role === 'admin';
   if (adminOnly && !admin) throw new PhotoError('Admin access required.', 403);
 
-  const owner = dbResult(await db.from('photo_photographers').select('*').eq('id', user.id).maybeSingle());
+  const owner = dbResult(ownerQuery);
+  if (owner?.deleted_at && !admin) throw new PhotoError('Your photographer account was removed.', 403);
   if (owner?.suspended && !admin) throw new PhotoError('Your photographer account is suspended.', 403);
   return { db, user, admin, owner };
 }
@@ -91,10 +96,14 @@ export async function ownedEvent(db: PhotoDb, id: string, userId: string, admin:
 
 export async function sharedEvent(db: PhotoDb, token: string) {
   if (!validToken(token)) throw new PhotoError('This event link is unavailable.', 404);
-  const settings = dbRequired(await db.from('photo_platform_settings').select('guest_access').single());
+  const [settingsQuery, eventQuery] = await Promise.all([
+    db.from('photo_platform_settings').select('guest_access').single(),
+    db.from('photo_events').select('*')
+      .eq('share_token', token).eq('sharing_enabled', true).eq('deleting', false).maybeSingle(),
+  ]);
+  const settings = dbRequired(settingsQuery);
   if (!settings.guest_access) throw new PhotoError('Guest photo sharing is temporarily paused.', 503);
-  const event = dbResult(await db.from('photo_events').select('*')
-    .eq('share_token', token).eq('sharing_enabled', true).eq('deleting', false).maybeSingle()) as PhotoEvent | null;
+  const event = dbResult(eventQuery) as PhotoEvent | null;
   if (!event) throw new PhotoError('This event link is unavailable.', 404);
   const owner = dbResult(await db.from('photo_photographers').select('suspended').eq('id', event.owner_id).maybeSingle());
   if (!owner || owner.suspended) throw new PhotoError('This event link is unavailable.', 404);
