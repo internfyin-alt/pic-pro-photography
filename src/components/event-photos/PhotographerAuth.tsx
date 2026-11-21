@@ -6,12 +6,12 @@ import styles from '@/components/workspace/Workspace.module.css';
 
 const messages: Record<string, string> = {
   invalid: 'Check that you filled in all the required fields.',
-  email: 'If this is a new account, check your email for a confirmation link. If you already have an account, sign in below.',
-  unconfirmed: 'Open the confirmation link in your email, then sign in again.',
+  email: 'Your account was created. Sign in with your email and password.',
+  unconfirmed: 'Email confirmation is still enabled. Disable it in Supabase Auth, or confirm this account by email before signing in.',
   credentials: 'The email or password is incorrect. Try again or reset your password.',
   'weak-password': 'Choose a stronger password with at least eight characters.',
-  'invalid-email': 'Enter a valid email address where you can receive a confirmation link.',
-  'email-restricted': 'This site’s email service cannot send a confirmation to this address. Contact PIC PRO for account setup.',
+  'invalid-email': 'Enter a valid email address.',
+  'email-restricted': 'This email address is not allowed by the account service.',
   'signup-disabled': 'Photographer registration is paused. Existing photographers can still sign in.',
   'rate-limited': 'Too many attempts. Wait a few minutes before trying again.',
   'signup-failed': 'Unable to create the account. If you already have a PIC PRO account, sign in below.',

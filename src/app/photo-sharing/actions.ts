@@ -52,16 +52,19 @@ export async function photographerAuth(form: FormData) {
   if (signup) {
     if (!name.success) redirect(back + '?status=invalid');
     if (parsed.data.password.length < 8) redirect(back + '?status=weak-password');
-    const origin = (await headers()).get('origin') ?? undefined;
     const { data, error } = await supabase.auth.signUp({
       ...parsed.data,
       options: {
         data: { photographer_name: name.data },
-        emailRedirectTo: requestUrl('/photo-sharing/verify', origin),
       },
     });
     if (error) redirect(back + '?status=' + photographerAuthStatus(error, true));
-    if (!data.session) redirect(back + '?status=email');
+    if (!data.session) {
+      const login = await supabase.auth.signInWithPassword(parsed.data);
+      if (login.error) {
+        redirect(back + '?status=' + photographerAuthStatus(login.error, false));
+      }
+    }
   } else {
     const { error } = await supabase.auth.signInWithPassword(parsed.data);
     if (error) redirect(back + '?status=' + photographerAuthStatus(error, false));
