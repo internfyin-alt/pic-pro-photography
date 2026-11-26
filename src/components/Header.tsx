@@ -29,7 +29,9 @@ export default function Header() {
               {label}
             </Link>
           ))}
-          <Link className="btn" href="/booking" style={{ color: '#111', minHeight: 44, padding: '8px 18px', borderRadius: 9999 }}>Book a Shoot</Link>
+          <Link className="btn" href="/booking" prefetch={prefetch === '/booking' ? 'auto' : false}
+            onMouseEnter={() => setPrefetch('/booking')} onFocus={() => setPrefetch('/booking')}
+            style={{ color: '#111', minHeight: 44, padding: '8px 18px', borderRadius: 9999 }}>Book a Shoot</Link>
         </nav>
       </div>
     </header>

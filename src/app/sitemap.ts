@@ -1,1 +1,8 @@
-import type {MetadataRoute} from 'next';export default function sitemap():MetadataRoute.Sitemap{const origin=process.env.NEXT_PUBLIC_SITE_URL||'http://localhost:3000';return ['','about','services','portfolio','gallery','videos','packages','booking','contact','faq','blog','testimonials','photo-sharing','photo-sharing/features','photo-sharing/how-it-works'].map(path=>({url:`${origin}/${path}`,lastModified:new Date()}))}
+import type { MetadataRoute } from 'next';
+import { publicPagePaths } from '@/lib/seo';
+import { publicSiteOrigin } from '@/lib/site-origin';
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  const origin = publicSiteOrigin();
+  return origin ? publicPagePaths.map(path => ({ url: new URL(path, origin).href })) : [];
+}

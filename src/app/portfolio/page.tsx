@@ -1,1 +1,3 @@
-import PortfolioGrid from '@/components/PortfolioGrid';export const metadata={title:'Portfolio'};export default function Page(){return <main className="section"><div className="container"><p className="eyebrow">Our Visual Stories</p><h1 className="heading">The <em className="gold">Portfolio.</em></h1><p className="muted">Development sample imagery — replace with your original studio work before launch.</p><PortfolioGrid/></div></main>}
+import { publicMetadata } from '@/lib/seo';
+import PortfolioGrid from '@/components/PortfolioGrid';export const metadata = publicMetadata('/portfolio');
+export default function Page(){return <main className="section"><div className="container"><p className="eyebrow">Our Visual Stories</p><h1 className="heading">The <em className="gold">Portfolio.</em></h1><p className="muted">Development sample imagery — replace with your original studio work before launch.</p><PortfolioGrid/></div></main>}

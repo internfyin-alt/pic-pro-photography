@@ -1,1 +1,5 @@
+import { publicMetadata } from '@/lib/seo';
+
+export const metadata = publicMetadata('/testimonials');
+
 export default function Page(){return <main className="section container"><h1 className="heading">Client <em className="gold">Stories.</em></h1><p className="muted">Verified, approved testimonials will appear here once available.</p></main>}

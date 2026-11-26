@@ -1,1 +1,5 @@
+import { publicMetadata } from '@/lib/seo';
+
+export const metadata = publicMetadata('/terms-and-conditions');
+
 export default function Page(){return <main className="section container" style={{maxWidth:850}}><h1 className="heading">Terms & Conditions</h1><p className="muted" style={{lineHeight:2}}>Draft terms: Website booking submissions are enquiries, not confirmed bookings. Event availability, deliverables, fees, cancellations and usage rights must be agreed in a separate written quotation or contract. Review and finalize these terms before launching publicly.</p></main>}

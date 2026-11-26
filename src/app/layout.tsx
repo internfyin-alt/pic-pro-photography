@@ -1,1 +1,17 @@
-import './globals.css';import Header from '@/components/Header';import Footer from '@/components/Footer';import type {Metadata} from 'next';export const metadata:Metadata={title:{default:'PIC PRO | Photography & Videography',template:'%s | PIC PRO'},description:'Wedding, pre-wedding, birthday, engagement photography and cinematic videography.',openGraph:{title:'PIC PRO Photography & Videography',type:'website'}};export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><Header/>{children}<Footer/></body></html>}
+import './globals.css';
+import type { Metadata } from 'next';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import { siteName } from '@/lib/seo';
+import { publicSiteOrigin } from '@/lib/site-origin';
+
+const origin = publicSiteOrigin();
+
+export const metadata: Metadata = {
+  metadataBase: origin ? new URL(origin) : undefined,
+  title: { default: siteName, template: '%s | PIC PRO' },
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return <html lang="en"><body><Header />{children}<Footer /></body></html>;
+}

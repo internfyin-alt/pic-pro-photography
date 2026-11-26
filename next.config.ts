@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
         source: '/photos/:name([a-z]+-\\d+\\.[a-f0-9]{10}\\.(?:webp|avif))',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
+      {
+        source: '/:portal(admin|client)/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
     ];
   },
 };

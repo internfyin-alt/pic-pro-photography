@@ -1,8 +1,9 @@
+import { publicMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { features } from '../content';
 import styles from '../sharing.module.css';
 
-export const metadata = { title: 'Photo Sharing Features' };
+export const metadata = publicMetadata('/photo-sharing/features');
 
 export default function Features() {
   return <main className={styles.shell}><div className="container">

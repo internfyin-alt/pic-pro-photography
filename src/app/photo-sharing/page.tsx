@@ -1,13 +1,11 @@
+import { publicMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import PublicPhoto from '@/components/PublicPhoto';
 import { images } from '@/lib/content';
 import { features, steps } from './content';
 import styles from './sharing.module.css';
 
-export const metadata = {
-  title: 'Event Photo Sharing',
-  description: 'Private QR event galleries and selfie-based photo discovery for PIC PRO guests.',
-};
+export const metadata = publicMetadata('/photo-sharing');
 
 export default function PhotoSharing() {
   return (

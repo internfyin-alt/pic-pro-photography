@@ -1,8 +1,9 @@
+import { publicMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { steps } from '../content';
 import styles from '../sharing.module.css';
 
-export const metadata = { title: 'How Event Photo Sharing Works' };
+export const metadata = publicMetadata('/photo-sharing/how-it-works');
 
 export default function HowItWorks() {
   return <main className={styles.shell}><div className="container">
