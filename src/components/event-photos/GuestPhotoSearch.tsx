@@ -112,7 +112,11 @@ export default function GuestPhotoSearch({ token, downloadsEnabled }: {
       setPersonalLink(registration.accessKey);
       setLinkExpiresAt(registration.expiresAt);
       setSelfie(undefined);
-      await findMatches(registration.accessKey);
+      try {
+        await findMatches(registration.accessKey);
+      } catch {
+        setStatus('Your registration was saved. Use Check for photos to try the search again.');
+      }
     });
   }
 

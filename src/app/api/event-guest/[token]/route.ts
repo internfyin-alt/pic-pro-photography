@@ -23,6 +23,8 @@ const guestName = z.string().trim().min(1).max(100);
 const guestPhone = z.string().trim().max(24).regex(/^\+?[\d ()-]+$/)
   .refine(phone => /^\d{7,15}$/.test(phone.replace(/\D/g, '')));
 
+const legacyRegistrationColumn = /null value in column "(?:location|relationship)"/i;
+
 async function limit(db: PhotoDb, scope: string, minutes: number, maximum: number) {
   const allowed = dbResult(await db.rpc('consume_photo_limit', {
     p_scope: scope, p_bucket: Math.floor(Date.now() / (minutes * 60_000)), p_limit: maximum,
@@ -52,10 +54,20 @@ async function register(request: Request, token: string, db: PhotoDb) {
   const current = await sharedEvent(db, token);
   const accessKey = secretToken();
   const expiresAt = new Date(Date.now() + guestRegistrationDays * 86_400_000).toISOString();
-  dbResult(await db.from('photo_guest_registrations').insert({
+  const registration = {
     token_hash: hashToken(accessKey), event_id: current.id, guest_name: name.data, phone: phone.data,
     selfie_jpeg: '\\x' + bytes.toString('hex'), consent_version: consentVersion, expires_at: expiresAt,
-  }));
+  };
+  const registrations = db.from('photo_guest_registrations');
+  let saved = await registrations.insert(registration);
+  if (saved.error?.code === '23502' && legacyRegistrationColumn.test(saved.error.message)) {
+    // Databases awaiting the migration still require these columns. Store no guest data in them.
+    saved = await registrations.insert({ ...registration, location: '', relationship: '' });
+  }
+  if (saved.error) {
+    console.error('Guest registration insert failed:', saved.error.code);
+    throw new PhotoError('We could not save your registration. Please try again later.', 502);
+  }
   return photoJson({ accessKey, expiresAt }, 201);
 }
 
