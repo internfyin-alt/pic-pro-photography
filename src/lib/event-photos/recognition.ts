@@ -103,7 +103,10 @@ export async function processNextPhoto(db: PhotoDb, eventId?: string) {
 }
 
 async function checkSelfie(client: RekognitionClient, Image: { Bytes: Uint8Array }) {
-  const detected = await client.send(new DetectFacesCommand({ Image }));
+  const detected = await client.send(new DetectFacesCommand({ Image })).catch((error: unknown) => {
+    console.error('Guest selfie verification failed:', error instanceof Error ? error.name : 'Unknown');
+    throw new PhotoError('Selfie verification is temporarily unavailable. Please contact your photographer.', 503);
+  });
   if (detected.FaceDetails?.length !== 1) {
     throw new PhotoError('Use a clear selfie with exactly one face.');
   }
