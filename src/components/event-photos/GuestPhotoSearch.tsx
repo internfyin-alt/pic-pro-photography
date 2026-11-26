@@ -93,7 +93,7 @@ export default function GuestPhotoSearch({ token, downloadsEnabled }: {
   function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selfie || busy) {
-      if (!busy) setStatus('Take or choose a selfie first.');
+      if (!busy) setStatus('Take a selfie first.');
       return;
     }
     const file = selfie;
@@ -195,7 +195,6 @@ export default function GuestPhotoSearch({ token, downloadsEnabled }: {
       <fieldset className={styles.stack}>
         <legend>Selfie</legend>
         <label><span>Take a selfie</span><input type="file" className="field" accept="image/*" capture="user" onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
-        <label><span>Or upload a saved selfie</span><input type="file" className="field" accept={photoMimeTypes.join(',')} onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
         {selfie && <small>Selected: {selfie.name}</small>}
       </fieldset>
       <p>Use a clear selfie with one face. PIC PRO keeps your registration and selfie private for {guestRegistrationDays} days and uses Amazon Rekognition to check for matching event photos. You can delete your registration from your personal link. Face matching can include incorrect results.</p>
