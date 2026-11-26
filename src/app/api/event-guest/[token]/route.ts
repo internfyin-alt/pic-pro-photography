@@ -18,11 +18,7 @@ const guestAction = z.discriminatedUnion('action', [
   z.object({ action: z.literal('forget'), accessKey: z.string() }),
 ]);
 
-const guestDetails = z.object({
-  name: z.string().trim().min(1).max(100),
-  location: z.string().trim().min(1).max(100),
-  relationship: z.string().trim().min(1).max(80),
-});
+const guestName = z.string().trim().min(1).max(100);
 
 const guestPhone = z.string().trim().max(24).regex(/^\+?[\d ()-]+$/)
   .refine(phone => /^\d{7,15}$/.test(phone.replace(/\D/g, '')));
@@ -44,25 +40,20 @@ async function register(request: Request, token: string, db: PhotoDb) {
   const form = await request.formData();
   const selfie = form.get('selfie');
   if (form.get('consent') !== consentVersion) throw new PhotoError('Review and accept the consent before registering.');
-  const details = guestDetails.safeParse({
-    name: form.get('name'), location: form.get('location'), relationship: form.get('relationship'),
-  });
-  if (!details.success) throw new PhotoError('Enter your name, city or town, and relationship.');
+  const name = guestName.safeParse(form.get('name'));
+  if (!name.success) throw new PhotoError('Enter your name.');
   const phone = guestPhone.safeParse(form.get('phone'));
-  if (event.guest_phone_required !== false && !phone.success) throw new PhotoError('Enter a valid phone number.');
+  if (!phone.success) throw new PhotoError('Enter a valid WhatsApp number.');
   if (!(selfie instanceof File) || selfie.size === 0 || selfie.size > maxSelfieBytes || !photoMimeTypes.includes(selfie.type)) {
     throw new PhotoError('Choose a JPG, PNG or WebP selfie under 3 MB.');
   }
 
   const bytes = await prepareRegistrationSelfie(await selfie.arrayBuffer());
   const current = await sharedEvent(db, token);
-  if (current.guest_phone_required !== false && !phone.success) throw new PhotoError('Enter a valid phone number.');
   const accessKey = secretToken();
   const expiresAt = new Date(Date.now() + guestRegistrationDays * 86_400_000).toISOString();
   dbResult(await db.from('photo_guest_registrations').insert({
-    token_hash: hashToken(accessKey), event_id: event.id, guest_name: details.data.name,
-    phone: current.guest_phone_required === false ? null : phone.data,
-    location: details.data.location, relationship: details.data.relationship,
+    token_hash: hashToken(accessKey), event_id: current.id, guest_name: name.data, phone: phone.data,
     selfie_jpeg: '\\x' + bytes.toString('hex'), consent_version: consentVersion, expires_at: expiresAt,
   }));
   return photoJson({ accessKey, expiresAt }, 201);

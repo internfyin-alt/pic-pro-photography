@@ -14,7 +14,6 @@ export type PhotoEvent = {
   sharing_enabled: boolean;
   guest_downloads_enabled?: boolean;
   face_search_enabled?: boolean;
-  guest_phone_required?: boolean;
   deleting: boolean;
   created_at: string;
 };

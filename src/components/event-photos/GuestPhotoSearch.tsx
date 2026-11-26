@@ -35,8 +35,8 @@ async function prepareSelfie(file: File) {
   }
 }
 
-export default function GuestPhotoSearch({ token, wedding, downloadsEnabled, phoneRequired }: {
-  token: string; wedding: boolean; downloadsEnabled: boolean; phoneRequired: boolean;
+export default function GuestPhotoSearch({ token, downloadsEnabled }: {
+  token: string; downloadsEnabled: boolean;
 }) {
   const endpoint = '/api/event-guest/' + token;
   const [selfie, setSelfie] = useState<File>();
@@ -187,12 +187,13 @@ export default function GuestPhotoSearch({ token, wedding, downloadsEnabled, pho
       <h2>Register for your event photos</h2>
       <p>Save your personal link and return after the photographer uploads the photos.</p>
       <label><span>Full name</span><input name="name" className="field" autoComplete="name" maxLength={100} required disabled={busy} /></label>
-      {phoneRequired && <label><span>Phone number</span><input name="phone" type="tel" className="field" autoComplete="tel" maxLength={24} required disabled={busy} /></label>}
-      <label><span>Location (city or town)</span><input name="location" className="field" autoComplete="address-level2" maxLength={100} required disabled={busy} /></label>
-      <label><span>{wedding ? 'Relationship to the groom (dulha)' : 'Relationship to the host'}</span><input name="relationship" className="field" maxLength={80} required disabled={busy} /></label>
-      <label><span>Take a selfie</span><input type="file" className="field" accept="image/*" capture="user" onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
-      <label><span>Or upload a saved selfie</span><input type="file" className="field" accept={photoMimeTypes.join(',')} onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
-      {selfie && <small>Selected: {selfie.name}</small>}
+      <label><span>WhatsApp number</span><input name="phone" type="tel" className="field" autoComplete="tel" maxLength={24} required disabled={busy} /></label>
+      <fieldset className={styles.stack}>
+        <legend>Selfie</legend>
+        <label><span>Take a selfie</span><input type="file" className="field" accept="image/*" capture="user" onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
+        <label><span>Or upload a saved selfie</span><input type="file" className="field" accept={photoMimeTypes.join(',')} onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
+        {selfie && <small>Selected: {selfie.name}</small>}
+      </fieldset>
       <p>Use a clear selfie with one face. PIC PRO keeps your registration and selfie private for {guestRegistrationDays} days and uses Amazon Rekognition to check for matching event photos. You can delete your registration from your personal link. Face matching can include incorrect results.</p>
       <label className={styles.check}><input required name="consent" value={consentVersion} type="checkbox" disabled={busy} />I am using my own selfie and consent to storing my registration and processing my selfie for this event.</label>
       <button type="submit" className={styles.primary} disabled={busy}>{busy ? 'Registering…' : 'Register for photos'}</button>

@@ -322,7 +322,7 @@ export default function EventManager({
           <dl className={studio.eventFacts}>
             <div><dt>Guest sharing</dt><dd>{enabled ? 'Enabled' : 'Paused'}</dd></div>
             <div><dt>Photo downloads</dt><dd>{gallerySettings.guestDownloadsEnabled ? 'Enabled' : 'Disabled'}</dd></div>
-            <div><dt>Mobile registration</dt><dd>{gallerySettings.guestPhoneRequired ? 'Required' : 'Optional'}</dd></div>
+            <div><dt>WhatsApp number</dt><dd>Required to register</dd></div>
             <div><dt>Active guest registrations</dt><dd>{registrations}</dd></div>
           </dl>
           <a className={styles.secondary} href="#studio-details">Edit access settings</a>

@@ -104,7 +104,6 @@ export default async function ManageEvent({ params, searchParams }: {
           gallerySettings={{
             guestDownloadsEnabled: data.event.guest_downloads_enabled !== false,
             faceSearchEnabled: data.event.face_search_enabled !== false,
-            guestPhoneRequired: data.event.guest_phone_required !== false,
           }}
         />
       </div>
