@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { maxPhotoBytes, originalBucket, photoMimeTypes } from '@/lib/event-photos/constants';
-import { eventDetails } from '@/lib/event-photos/validation';
+import { maxPhotoBytes, originalBucket, photoMimeTypes, photoPageSize, photoReviewFilters } from '@/lib/event-photos/constants';
+import { eventDetails, gallerySettings, gallerySettingsFields } from '@/lib/event-photos/validation';
 import { processNextPhoto, removeEventCollection, removePhotoFaces } from '@/lib/event-photos/recognition';
 import {
   audit, dbRequired, dbResult, ownedEvent, photoActor, photoFailure, photoJson, PhotoError, previewPath,
@@ -11,7 +11,7 @@ import {
 export const maxDuration = 60;
 type Context = { params: Promise<{ id: string }> };
 const controls = z.discriminatedUnion('action', [
-  eventDetails.extend({ action: z.literal('details') }),
+  eventDetails.extend(gallerySettings.shape).extend({ action: z.literal('details') }),
   z.object({ action: z.literal('sharing'), enabled: z.boolean() }),
   z.object({ action: z.literal('rotate') }),
   z.object({ action: z.literal('reserve'), name: z.string().trim().min(1).max(200), size: z.number().int().positive().max(maxPhotoBytes), type: z.string().refine(type => photoMimeTypes.includes(type)) }),
@@ -26,13 +26,20 @@ export async function GET(request: Request, { params }: Context) {
   try {
     const { db, user, admin } = await photoActor();
     const event = await ownedEvent(db, (await params).id, user.id, admin);
-    const raw = Number(new URL(request.url).searchParams.get('page') ?? 0);
-    const page = Number.isSafeInteger(raw) && raw >= 0 ? raw : 0;
-    const pageSize = 50;
-    const response = await db.from('event_photos').select('id,file_name,byte_size,status,face_count,error,created_at', { count: 'exact' })
-      .eq('event_id', event.id).order('created_at', { ascending: false }).order('id').range(page * pageSize, (page + 1) * pageSize - 1);
-    const photos = dbResult(response);
-    const pendingQuery = await db.from('event_photos').select('id', { count: 'exact', head: true }).eq('event_id', event.id).in('status', ['queued', 'processing']);
+    const search = new URL(request.url).searchParams;
+    const raw = Number(search.get('page') ?? 0);
+    const page = Number.isSafeInteger(raw) && raw >= 0 && raw < 1_000_000 ? raw : 0;
+    const filter = photoReviewFilters.find(option => option.value === search.get('filter'))?.value ?? 'all';
+    const photosQuery = db.from('event_photos').select('id,file_name,byte_size,status,face_count,error,created_at', { count: 'exact' })
+      .eq('event_id', event.id).order('created_at', { ascending: false }).order('id');
+    const pendingStatuses = ['queued', 'processing'];
+    if (filter === 'pending') photosQuery.in('status', pendingStatuses);
+    else if (filter !== 'all') photosQuery.eq('status', filter);
+    const [response, pendingQuery] = await Promise.all([
+      photosQuery.range(page * photoPageSize, (page + 1) * photoPageSize - 1),
+      db.from('event_photos').select('id', { count: 'exact', head: true }).eq('event_id', event.id).in('status', pendingStatuses),
+    ]);
+    const photos = response.status === 416 ? [] : dbResult(response);
     dbResult(pendingQuery);
     return photoJson({ photos, total: response.count ?? 0, pending: pendingQuery.count ?? 0 });
   } catch (error) {
@@ -53,11 +60,19 @@ export async function POST(request: Request, { params }: Context) {
       case 'details': {
         dbResult(await db.from('photo_events').update({
           title: input.title, event_type: input.eventType, event_date: input.eventDate || null,
+          ...gallerySettingsFields(input),
+          ...(input.faceSearchEnabled === false && { sharing_enabled: false }),
         }).eq('id', event.id).eq('deleting', false));
+        if (input.faceSearchEnabled === false) {
+          dbResult(await db.from('photo_guest_sessions').delete().eq('event_id', event.id));
+        }
         await audit(db, 'event.updated', event.id, user.id);
         return photoJson({ ok: true });
       }
       case 'sharing': {
+        if (input.enabled && event.face_search_enabled === false) {
+          throw new PhotoError('Enable Allow Face Search in event settings before turning on guest sharing.', 409);
+        }
         dbResult(await db.from('photo_events').update({ sharing_enabled: input.enabled }).eq('id', event.id).eq('deleting', false));
         if (!input.enabled) dbResult(await db.from('photo_guest_sessions').delete().eq('event_id', event.id));
         await audit(db, input.enabled ? 'event.sharing_enabled' : 'event.sharing_paused', event.id, user.id);

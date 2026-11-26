@@ -7,3 +7,12 @@ export const consentVersion = '2026-11-19';
 export const guestRegistrationDays = 30;
 export const guestSessionMinutes = 30;
 export const maxGuestMatches = 100;
+export const photoPageSize = 50;
+export const photoReviewFilters = [
+  { value: 'all', label: 'All photos' },
+  { value: 'ready', label: 'Indexed' },
+  { value: 'pending', label: 'Indexing pending' },
+  { value: 'failed', label: 'Needs attention' },
+] as const;
+
+export type PhotoReviewFilter = (typeof photoReviewFilters)[number]['value'];

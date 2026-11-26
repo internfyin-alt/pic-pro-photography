@@ -13,7 +13,8 @@ export default async function GuestPage({ params }: { params: Promise<{ token: s
     {event ? <>
       <h1>{event.title}</h1>
       <p>{[event.event_type, event.event_date].filter(Boolean).join(' · ')}</p>
-      <GuestPhotoSearch token={token} wedding={event.event_type.toLowerCase() === 'wedding'} />
+      <GuestPhotoSearch token={token} wedding={event.event_type.toLowerCase() === 'wedding'}
+        downloadsEnabled={event.guest_downloads_enabled !== false} phoneRequired={event.guest_phone_required !== false} />
     </> : <><h1>Event link unavailable</h1><p>Ask your photographer for the current QR code or event link.</p></>}
   </div></main>;
 }

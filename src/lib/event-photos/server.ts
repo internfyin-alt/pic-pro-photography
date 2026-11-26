@@ -12,6 +12,9 @@ export type PhotoEvent = {
   event_date: string | null;
   share_token: string;
   sharing_enabled: boolean;
+  guest_downloads_enabled?: boolean;
+  face_search_enabled?: boolean;
+  guest_phone_required?: boolean;
   deleting: boolean;
   created_at: string;
 };
@@ -104,7 +107,7 @@ export async function sharedEvent(db: PhotoDb, token: string) {
   const settings = dbRequired(settingsQuery);
   if (!settings.guest_access) throw new PhotoError('Guest photo sharing is temporarily paused.', 503);
   const event = dbResult(eventQuery) as PhotoEvent | null;
-  if (!event) throw new PhotoError('This event link is unavailable.', 404);
+  if (!event || event.face_search_enabled === false) throw new PhotoError('This event link is unavailable.', 404);
   const owner = dbResult(await db.from('photo_photographers').select('suspended').eq('id', event.owner_id).maybeSingle());
   if (!owner || owner.suspended) throw new PhotoError('This event link is unavailable.', 404);
   return event;

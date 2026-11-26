@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import type { AuthError } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { supabaseServer } from '@/lib/supabase';
-import { audit, dbRequired, dbResult, photoActor, photoDb, requestUrl, validId } from '@/lib/event-photos/server';
+import { audit, dbRequired, dbResult, photoActor, photoDb, PhotoError, requestUrl, secretToken, validId } from '@/lib/event-photos/server';
 
 const credentials = z.object({
   email: z.string().trim().email().max(254),
@@ -91,20 +91,44 @@ export async function createPhotographer(form: FormData) {
 
 export async function updatePhotographer(form: FormData) {
   const name = z.string().trim().min(2).max(100).safeParse(form.get('name'));
-  if (!name.success) redirect('/photo-sharing/studio?status=invalid');
+  if (!name.success) redirect('/photo-sharing/studio?view=profile&status=invalid');
   try {
     const { db, user, owner } = await photoActor();
     if (owner) dbResult(await db.from('photo_photographers').update({ name: name.data, email: user.email }).eq('id', user.id));
   } catch {
-    redirect('/photo-sharing/studio?status=failed');
+    redirect('/photo-sharing/studio?view=profile&status=failed');
   }
-  redirect('/photo-sharing/studio?status=saved');
+  redirect('/photo-sharing/studio?view=profile&status=saved');
 }
 
 export async function photographerLogout() {
   const supabase = await supabaseServer();
   await supabase.auth.signOut();
   redirect('/photo-sharing');
+}
+
+export async function setAllEventsSharing(form: FormData) {
+  const back = '/photo-sharing/studio?view=qr';
+  const setting = form.get('enabled');
+  if (setting !== 'true' && setting !== 'false') redirect(back + '&status=all-events-failed');
+
+  try {
+    const { db, user, owner } = await photoActor();
+    if (!owner || owner.suspended || owner.deleted_at) throw new PhotoError('Photographer access required.', 403);
+
+    const enabled = setting === 'true';
+    const initialize = enabled && !owner.all_events_share_token;
+    const update = db.from('photo_photographers').update(initialize
+      ? { all_events_sharing_enabled: true, all_events_share_token: secretToken() }
+      : { all_events_sharing_enabled: enabled },
+    ).eq('id', user.id).eq('suspended', false).is('deleted_at', null);
+    // Concurrent first-time requests must reuse the token written by the first update.
+    dbResult(await (initialize ? update.is('all_events_share_token', null) : update));
+  } catch (error) {
+    if (error instanceof PhotoError && error.status === 401) redirect('/photo-sharing/login');
+    redirect(back + '&status=all-events-failed');
+  }
+  redirect(back);
 }
 
 export async function setPhotographerStatus(form: FormData) {

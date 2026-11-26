@@ -35,7 +35,9 @@ async function prepareSelfie(file: File) {
   }
 }
 
-export default function GuestPhotoSearch({ token, wedding }: { token: string; wedding: boolean }) {
+export default function GuestPhotoSearch({ token, wedding, downloadsEnabled, phoneRequired }: {
+  token: string; wedding: boolean; downloadsEnabled: boolean; phoneRequired: boolean;
+}) {
   const endpoint = '/api/event-guest/' + token;
   const [selfie, setSelfie] = useState<File>();
   const [result, setResult] = useState<Result>();
@@ -185,7 +187,7 @@ export default function GuestPhotoSearch({ token, wedding }: { token: string; we
       <h2>Register for your event photos</h2>
       <p>Save your personal link and return after the photographer uploads the photos.</p>
       <label><span>Full name</span><input name="name" className="field" autoComplete="name" maxLength={100} required disabled={busy} /></label>
-      <label><span>Phone number</span><input name="phone" type="tel" className="field" autoComplete="tel" maxLength={24} required disabled={busy} /></label>
+      {phoneRequired && <label><span>Phone number</span><input name="phone" type="tel" className="field" autoComplete="tel" maxLength={24} required disabled={busy} /></label>}
       <label><span>Location (city or town)</span><input name="location" className="field" autoComplete="address-level2" maxLength={100} required disabled={busy} /></label>
       <label><span>{wedding ? 'Relationship to the groom (dulha)' : 'Relationship to the host'}</span><input name="relationship" className="field" maxLength={80} required disabled={busy} /></label>
       <label><span>Take a selfie</span><input type="file" className="field" accept="image/*" capture="user" onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>
@@ -216,20 +218,20 @@ export default function GuestPhotoSearch({ token, wedding }: { token: string; we
       </div>
       {!expired && <>
         {!result.photos.length && <p>No matches were found in the photos uploaded so far. Check back after the photographer finishes uploading.</p>}
-        {!!result.photos.length && <div className={styles.actions} style={{ marginBottom: 20 }}>
+        {downloadsEnabled && !!result.photos.length && <div className={styles.actions} style={{ marginBottom: 20 }}>
           <button className={styles.primary} type="button" disabled={busy} onClick={() => zip(result.photos.map(photo => photo.id))}>Download all</button>
           <button className={styles.secondary} type="button" disabled={busy || !selected.length} onClick={() => zip(selected)}>Download selected ({selected.length})</button>
         </div>}
         <div className={styles.gallery}>{result.photos.map(photo => <article className={styles.photoCard} key={photo.id}>
           {photo.previewUrl && <img src={photo.previewUrl} alt="" loading="lazy" referrerPolicy="no-referrer" />}
           <p>{photo.name}</p>
-          <label className={styles.check}><input type="checkbox" checked={selected.includes(photo.id)} onChange={event => {
+          {downloadsEnabled && <label className={styles.check}><input type="checkbox" checked={selected.includes(photo.id)} onChange={event => {
             const checked = event.currentTarget.checked;
             setSelected(ids => checked ? [...ids, photo.id] : ids.filter(id => id !== photo.id));
-          }} />Select photo</label>
+          }} />Select photo</label>}
           <div className={styles.actions}>
             <button className={styles.secondary} type="button" disabled={busy} onClick={() => accessPhoto(photo.id, photo.name, false)}>Preview</button>
-            <button className={styles.secondary} type="button" disabled={busy} onClick={() => accessPhoto(photo.id, photo.name, true)}>Download</button>
+            {downloadsEnabled && <button className={styles.secondary} type="button" disabled={busy} onClick={() => accessPhoto(photo.id, photo.name, true)}>Download</button>}
           </div>
         </article>)}</div>
       </>}

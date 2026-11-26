@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { audit, dbRequired, photoActor, photoFailure, photoJson, PhotoError, secretToken } from '@/lib/event-photos/server';
-import { eventDetails } from '@/lib/event-photos/validation';
+import { eventDetails, gallerySettings, gallerySettingsFields } from '@/lib/event-photos/validation';
 
-const eventInput = eventDetails.extend({ permission: z.literal(true) });
+const eventInput = eventDetails.extend(gallerySettings.shape).extend({ permission: z.literal(true) });
 
 export async function POST(request: Request) {
   try {
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     const event = dbRequired(await db.from('photo_events').insert({
       owner_id: user.id, title: input.title, event_type: input.eventType,
       event_date: input.eventDate || null, share_token: secretToken(),
+      ...gallerySettingsFields(input),
     }).select('id').single());
     await audit(db, 'event.created', event.id, user.id);
     return photoJson(event, 201);

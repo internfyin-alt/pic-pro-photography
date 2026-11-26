@@ -20,11 +20,12 @@ const guestAction = z.discriminatedUnion('action', [
 
 const guestDetails = z.object({
   name: z.string().trim().min(1).max(100),
-  phone: z.string().trim().max(24).regex(/^\+?[\d ()-]+$/)
-    .refine(phone => /^\d{7,15}$/.test(phone.replace(/\D/g, ''))),
   location: z.string().trim().min(1).max(100),
   relationship: z.string().trim().min(1).max(80),
 });
+
+const guestPhone = z.string().trim().max(24).regex(/^\+?[\d ()-]+$/)
+  .refine(phone => /^\d{7,15}$/.test(phone.replace(/\D/g, '')));
 
 async function limit(db: PhotoDb, scope: string, minutes: number, maximum: number) {
   const allowed = dbResult(await db.rpc('consume_photo_limit', {
@@ -44,20 +45,24 @@ async function register(request: Request, token: string, db: PhotoDb) {
   const selfie = form.get('selfie');
   if (form.get('consent') !== consentVersion) throw new PhotoError('Review and accept the consent before registering.');
   const details = guestDetails.safeParse({
-    name: form.get('name'), phone: form.get('phone'), location: form.get('location'), relationship: form.get('relationship'),
+    name: form.get('name'), location: form.get('location'), relationship: form.get('relationship'),
   });
-  if (!details.success) throw new PhotoError('Enter your name, a valid phone number, city or town, and relationship.');
+  if (!details.success) throw new PhotoError('Enter your name, city or town, and relationship.');
+  const phone = guestPhone.safeParse(form.get('phone'));
+  if (event.guest_phone_required !== false && !phone.success) throw new PhotoError('Enter a valid phone number.');
   if (!(selfie instanceof File) || selfie.size === 0 || selfie.size > maxSelfieBytes || !photoMimeTypes.includes(selfie.type)) {
     throw new PhotoError('Choose a JPG, PNG or WebP selfie under 3 MB.');
   }
 
   const bytes = await prepareRegistrationSelfie(await selfie.arrayBuffer());
-  await sharedEvent(db, token);
+  const current = await sharedEvent(db, token);
+  if (current.guest_phone_required !== false && !phone.success) throw new PhotoError('Enter a valid phone number.');
   const accessKey = secretToken();
   const expiresAt = new Date(Date.now() + guestRegistrationDays * 86_400_000).toISOString();
   dbResult(await db.from('photo_guest_registrations').insert({
     token_hash: hashToken(accessKey), event_id: event.id, guest_name: details.data.name,
-    phone: details.data.phone, location: details.data.location, relationship: details.data.relationship,
+    phone: current.guest_phone_required === false ? null : phone.data,
+    location: details.data.location, relationship: details.data.relationship,
     selfie_jpeg: '\\x' + bytes.toString('hex'), consent_version: consentVersion, expires_at: expiresAt,
   }));
   return photoJson({ accessKey, expiresAt }, 201);
@@ -125,6 +130,9 @@ export async function POST(request: Request, { params }: Context) {
     }
 
     const event = await sharedEvent(db, token);
+    if (event.guest_downloads_enabled === false && (input.action === 'download' || input.action === 'batch')) {
+      throw new PhotoError('Photo downloads are disabled for this gallery.', 403);
+    }
     const { photo_ids: allowedIds = [] } = dbResult(await db.from('photo_guest_sessions').select('photo_ids')
       .eq('event_id', event.id).eq('token_hash', tokenHash).gt('expires_at', new Date().toISOString()).maybeSingle()) ?? {};
     if (!allowedIds.length) throw new PhotoError('This photo search has expired. Take a new selfie to continue.', 401);
