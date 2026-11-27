@@ -57,3 +57,27 @@
 .masonry img {
   height: auto;
 }
+
+.whatsapp-float {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 25;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #12854a;
+  color: #fff;
+  box-shadow: 0 4px 16px #0006;
+}
+
+.whatsapp-float:hover {
+  background: #0d743f;
+}
+
+.whatsapp-float:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}

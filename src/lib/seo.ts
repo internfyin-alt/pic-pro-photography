@@ -18,7 +18,7 @@ const pages = {
   '/testimonials': ['Testimonials', 'The testimonials page for PIC PRO Photography & Videography.'],
   '/privacy-policy': ['Privacy Policy', 'Read how PIC PRO Photography & Videography handles personal information.'],
   '/terms-and-conditions': ['Terms & Conditions', 'Read the terms for PIC PRO Photography & Videography bookings and services.'],
-  '/photo-sharing': ['Event Photo Sharing', 'Private QR event galleries and selfie-based photo discovery for PIC PRO guests.'],
+  '/photo-sharing': ['Event Photo Sharing', 'Photographers can sign up or log in to manage their PIC PRO event galleries.'],
   '/photo-sharing/features': ['Photo Sharing Features', 'See how private event galleries, QR access and selfie matching help guests find their photos with PIC PRO.'],
   '/photo-sharing/how-it-works': ['How Event Photo Sharing Works', 'Learn how photographers share PIC PRO event photos and how guests scan the event QR code to find their photos.'],
 } as const;

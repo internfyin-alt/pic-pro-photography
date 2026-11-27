@@ -21,8 +21,8 @@
 .shell label > span { display: block; margin-bottom: 8px; }
 .shell small { color: var(--subtle); }
 .brand { font-size: 12px; font-weight: 700; letter-spacing: .25em; text-transform: uppercase; color: var(--champagne); }
-.hero { display: grid; grid-template-columns: 1fr .9fr; align-items: center; gap: clamp(24px, 5vw, 74px); }
-.heroVisual { position: relative; min-height: clamp(250px, 45vw, 570px); background-size: cover; background-position: center; border-radius: 3px; overflow: hidden; }
+.landing { text-align: center; }
+.landing .actions { justify-content: center; }
 .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .shell .primary, .shell .secondary {
   display: inline-flex; width: fit-content; justify-content: center; align-items: center;
@@ -65,11 +65,8 @@
 .qr { display: block; width: min(100%, 220px); height: auto; margin: 12px 0; }
 .check { display: flex !important; align-items: flex-start; gap: 9px; line-height: 1.5; }
 .check input { margin-top: 5px; }
-.showcase { margin: 0; }
-.showcase img { width: 100%; display: block; aspect-ratio: 4/3; object-fit: cover; border-radius: 4px; }
-.showcase figcaption { color: var(--subtle); margin-top: 10px; font-size: 14px; }
 .directoryList { margin-top: 28px; }
 .directoryCard { display: grid; align-content: space-between; justify-items: start; gap: 16px; min-width: 0; }
 .directoryCard h2 { font-size: clamp(22px, 3vw, 29px); line-height: 1.15; margin: 9px 0 6px; overflow-wrap: anywhere; }
 .directoryIcon { color: var(--champagne); }
-@media (max-width: 740px) { .hero, .split { grid-template-columns: 1fr; } }
+@media (max-width: 740px) { .split { grid-template-columns: 1fr; } }

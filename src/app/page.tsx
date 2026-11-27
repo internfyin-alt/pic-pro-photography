@@ -4,33 +4,39 @@ import Link from 'next/link';import PublicPhoto from '@/components/PublicPhoto';
 
 export const metadata = publicMetadata('/');
 
+const photographers = [
+  { name: 'Subhash Kumar', portrait: '/photos/pic-pro-photographer-portrait.jpg' },
+  { name: 'Sashi Kumar', portrait: '/photos/sashi-kumar-portrait.png' },
+];
+
 export default function Home() {
   const data = homepageStructuredData();
   return <main>{data && <script type="application/ld+json" dangerouslySetInnerHTML={{
     __html: JSON.stringify(data).replace(/</g, '\\u003c'),
   }} />}<section className="hero"><PublicPhoto photo={images.hero} alt="" className="photo-cover" sizes="(max-width: 850px) max(100vw, 112vh), max(100vw, calc(150vh - 135px))" priority /><div className="container" style={{width:'100%'}}><p className="eyebrow">PIC PRO · Photography & Videography</p><h1 className="heading" style={{fontSize:'clamp(48px,7vw,108px)',maxWidth:900,margin:'22px 0'}}>Capturing Moments.<br/><em style={{color:'#f58b22'}}>Creating Memories.</em></h1><p style={{color:'#dedede',lineHeight:1.9,maxWidth:580,fontSize:17}}>From beautiful weddings to unforgettable celebrations, we transform your precious moments into timeless photographs and cinematic stories.</p><div style={{display:'flex',gap:14,flexWrap:'wrap',marginTop:34}}><Link prefetch={false} className="btn" href="/portfolio">Explore Portfolio <ArrowUpRight size={16}/></Link><Link prefetch={false} className="btn outline" href="/booking">Book Your Shoot</Link></div></div></section><section className="section"><div className="container grid2" style={{alignItems:'center',gap:70}}><div><p className="eyebrow">The Art of Remembering</p><h2 className="heading">Every moment deserves to be <em className="gold">remembered.</em></h2><p className="muted" style={{lineHeight:2}}>We believe the most beautiful photographs are the ones that make you feel something. From the quiet anticipation before a wedding to the energy of a joyful celebration, we create imagery that tells your story.</p><Link prefetch={false} className="btn outline" href="/about">Discover Our Story</Link></div><div style={{height:510,position:'relative'}}><PublicPhoto photo={images.portrait} alt="Editorial wedding portrait" className="photo-cover" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 1240px) calc(50vw - 61px), 559px" /></div></div></section>
     <section className="section" aria-labelledby="homepage-photographer">
-      <div className="container grid2" style={{ alignItems: 'center', gap: 'clamp(24px, 5vw, 70px)' }}>
-        <div style={{
-          position: 'relative', width: '100%', maxWidth: 380, aspectRatio: '1 / 1',
-          borderRadius: '50%', overflow: 'hidden', justifySelf: 'center',
-        }}>
-          <Image
-            src="/photos/pic-pro-photographer-portrait.jpg"
-            alt="Subhash Kumar holding a Nikon lens cap"
-            fill
-            sizes="(max-width: 416px) calc(100vw - 36px), (max-width: 600px) 380px, (max-width: 860px) 44vw, 380px"
-            style={{ objectFit: 'cover', objectPosition: 'center top' }}
-          />
-        </div>
-        <div>
-          <p className="eyebrow">Meet the Photographer</p>
-          <h2 className="heading" id="homepage-photographer">
-            Subhash <em className="gold">Kumar</em>
-          </h2>
-          <p className="muted" style={{ maxWidth: 460, lineHeight: 1.9 }}>
-            The photographer behind PIC PRO captures weddings, birthdays, and the moments in between.
-          </p>
+      <div className="container" style={{ maxWidth: 880, textAlign: 'center' }}>
+        <h2 className="heading" id="homepage-photographer" style={{ margin: '0 0 36px' }}>
+          Meet the <em className="gold">Photographers</em>
+        </h2>
+        <div className="grid2" style={{ gap: 'clamp(24px, 5vw, 60px)' }}>
+          {photographers.map(({ name, portrait }) => (
+            <figure key={name} style={{ margin: 0 }}>
+              <div style={{
+                position: 'relative', width: '100%', maxWidth: 380, aspectRatio: '1 / 1',
+                borderRadius: '50%', overflow: 'hidden', marginInline: 'auto',
+              }}>
+                <Image
+                  src={portrait}
+                  alt=""
+                  fill
+                  sizes="(max-width: 416px) calc(100vw - 36px), (max-width: 600px) 380px, (max-width: 860px) 44vw, 380px"
+                  style={{ objectFit: 'cover', objectPosition: 'center top' }}
+                />
+              </div>
+              <figcaption style={{ marginTop: 18, fontSize: 24 }}>{name}</figcaption>
+            </figure>
+          ))}
         </div>
       </div>
     </section>
