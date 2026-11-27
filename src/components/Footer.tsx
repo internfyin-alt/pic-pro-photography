@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MapPin, Phone } from 'lucide-react';
+import { Facebook, Instagram, MapPin, Phone } from 'lucide-react';
 import SiteLogo from './SiteLogo';
 
 const whatsappNumber = '917366030490';
@@ -30,6 +30,19 @@ export default function Footer() {
             <p className="muted" style={{ maxWidth: 360, lineHeight: 1.9 }}>
               Capturing moments. Creating memories. Photography, filmmaking and meaningful stories for every celebration.
             </p>
+            <div className="footer-socials">
+              <a
+                href="https://www.instagram.com/picpro_videography/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="PIC PRO on Instagram"
+              >
+                <Instagram aria-hidden="true" size={20} />
+              </a>
+              <span role="img" aria-label="Facebook">
+                <Facebook aria-hidden="true" size={20} />
+              </span>
+            </div>
           </div>
           <div>
             <p className="eyebrow">Explore</p>
