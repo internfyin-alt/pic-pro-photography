@@ -7,6 +7,7 @@ export const metadata = publicMetadata('/');
 const photographers = [
   { name: 'Subhash Kumar', portrait: '/photos/pic-pro-photographer-portrait.jpg' },
   { name: 'Sashi Kumar', portrait: '/photos/sashi-kumar-portrait.png' },
+  { name: 'Raj Kumar', portrait: '/photos/raj-kumar-portrait.png' },
 ];
 
 export default function Home() {
@@ -19,7 +20,7 @@ export default function Home() {
         <h2 className="heading" id="homepage-photographer" style={{ margin: '0 0 36px' }}>
           Meet the <em className="gold">Photographers</em>
         </h2>
-        <div className="grid2" style={{ gap: 'clamp(24px, 5vw, 60px)' }}>
+        <div className="grid3" style={{ gap: 'clamp(24px, 5vw, 60px)' }}>
           {photographers.map(({ name, portrait }) => (
             <figure key={name} style={{ margin: 0 }}>
               <div style={{
@@ -30,7 +31,7 @@ export default function Home() {
                   src={portrait}
                   alt=""
                   fill
-                  sizes="(max-width: 416px) calc(100vw - 36px), (max-width: 600px) 380px, (max-width: 860px) 44vw, 380px"
+                  sizes="(max-width: 416px) calc(100vw - 36px), (max-width: 600px) 380px, (max-width: 850px) 44vw, 250px"
                   style={{ objectFit: 'cover', objectPosition: 'center top' }}
                 />
               </div>
