@@ -18,7 +18,7 @@ export default function Home() {
     <section className="section" aria-labelledby="homepage-photographer">
       <div className="container" style={{ maxWidth: 880, textAlign: 'center' }}>
         <h2 className="heading" id="homepage-photographer" style={{ margin: '0 0 36px' }}>
-          Meet the <em className="gold">Photographers</em>
+          Meet the <em className="gold">Photographers &amp; videographer</em>
         </h2>
         <div className="grid3" style={{ gap: 'clamp(24px, 5vw, 60px)' }}>
           {photographers.map(({ name, portrait }) => (
