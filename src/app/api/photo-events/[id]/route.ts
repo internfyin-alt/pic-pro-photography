@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import { after } from 'next/server';
 import { z } from 'zod';
 import { maxPhotoBytes, originalBucket, photoMimeTypes, photoPageSize, photoReviewFilters } from '@/lib/event-photos/constants';
 import { eventDetails, gallerySettings, gallerySettingsFields } from '@/lib/event-photos/validation';
 import { processNextPhoto, removeEventCollection, removePhotoFaces } from '@/lib/event-photos/recognition';
+import { sendPendingWhatsApp, whatsappNotificationsEnabled } from '@/lib/event-photos/whatsapp';
 import {
   audit, dbRequired, dbResult, ownedEvent, photoActor, photoFailure, photoJson, PhotoError, previewPath,
   secretToken, signedPhoto, type EventPhoto, validId,
@@ -76,6 +78,9 @@ export async function POST(request: Request, { params }: Context) {
         dbResult(await db.from('photo_events').update({ sharing_enabled: input.enabled }).eq('id', event.id).eq('deleting', false));
         if (!input.enabled) dbResult(await db.from('photo_guest_sessions').delete().eq('event_id', event.id));
         await audit(db, input.enabled ? 'event.sharing_enabled' : 'event.sharing_paused', event.id, user.id);
+        if (input.enabled && whatsappNotificationsEnabled()) {
+          after(() => sendPendingWhatsApp(db, Date.now() + 35_000, event.id));
+        }
         return photoJson({ enabled: input.enabled });
       }
       case 'rotate': {
@@ -96,8 +101,13 @@ export async function POST(request: Request, { params }: Context) {
         const upload = dbRequired(await db.storage.from(originalBucket).createSignedUploadUrl(path));
         return photoJson({ id, path, token: upload.token }, 201);
       }
-      case 'process':
-        return photoJson({ processed: await processNextPhoto(db, event.id) });
+      case 'process': {
+        const processed = await processNextPhoto(db, event.id);
+        if (!processed && event.sharing_enabled && whatsappNotificationsEnabled()) {
+          after(() => sendPendingWhatsApp(db, Date.now() + 35_000, event.id));
+        }
+        return photoJson({ processed });
+      }
       default: {
         const photo = dbResult(await db.from('event_photos').select('*')
           .eq('event_id', event.id).eq('id', input.photoId).maybeSingle()) as EventPhoto | null;

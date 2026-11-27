@@ -119,14 +119,14 @@ export async function prepareRegistrationSelfie(selfie: ArrayBuffer) {
   return bytes;
 }
 
-export async function matchSelfie(eventId: string, selfie: Uint8Array) {
+async function matchSelfie(eventId: string, selfie: Uint8Array, signal?: AbortSignal) {
   const client = recognition();
   const Image = { Bytes: selfie };
   try {
     const matches = await client.send(new SearchFacesByImageCommand({
       Image, CollectionId: collection(eventId), MaxFaces: maxGuestMatches * 4,
       FaceMatchThreshold: 99, QualityFilter: 'HIGH',
-    }));
+    }), { abortSignal: signal });
     return Array.from(new Set((matches.FaceMatches ?? []).flatMap(match =>
       match.Face?.ExternalImageId ? [match.Face.ExternalImageId] : [],
     ))).slice(0, maxGuestMatches);
@@ -134,5 +134,13 @@ export async function matchSelfie(eventId: string, selfie: Uint8Array) {
     if (named(error, 'ResourceNotFoundException')) return [];
     if (named(error, 'InvalidParameterException')) throw new PhotoError('Use a clear, well-lit selfie looking straight at the camera.');
     throw error;
+  } finally {
+    client.destroy();
   }
+}
+
+export async function readyGuestMatches(db: PhotoDb, eventId: string, selfie: string, signal?: AbortSignal) {
+  const ids = await matchSelfie(eventId, Buffer.from(selfie.slice(2), 'hex'), signal);
+  return ids.length ? dbRequired(await db.from('event_photos')
+    .select('id,file_name,byte_size,storage_path').eq('event_id', eventId).eq('status', 'ready').in('id', ids)) : [];
 }

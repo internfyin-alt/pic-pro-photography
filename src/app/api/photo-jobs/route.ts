@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { processNextPhoto } from '@/lib/event-photos/recognition';
+import { sendPendingWhatsApp } from '@/lib/event-photos/whatsapp';
 import { originalBucket } from '@/lib/event-photos/constants';
 import { dbRequired, dbResult, photoDb, photoFailure, photoJson, previewPath } from '@/lib/event-photos/server';
 
@@ -13,6 +14,7 @@ async function run(request: Request) {
   if (!secret || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
     return photoJson({ error: 'Unauthorized' }, 401);
   }
+  const startedAt = Date.now();
   try {
     const db = photoDb();
     const now = new Date().toISOString();
@@ -32,9 +34,10 @@ async function run(request: Request) {
       if (stale.length) dbResult(await db.from('event_photos').delete().in('id', stale.map(photo => photo.id)));
       if (cleanup.length) dbResult(await db.from('photo_storage_cleanup').delete().in('storage_path', cleanup.map(photo => photo.storage_path)));
     }
-    const deadline = Date.now() + 35_000;
+    const deadline = startedAt + 30_000;
     let processed = 0;
     while (Date.now() < deadline && processed < 20 && await processNextPhoto(db)) processed++;
+    await sendPendingWhatsApp(db, deadline + 10_000);
     return photoJson({ processed });
   } catch (error) {
     return photoFailure(error);

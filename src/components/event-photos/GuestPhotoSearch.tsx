@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { consentVersion, guestRegistrationDays, maxSelfieBytes, photoMimeTypes } from '@/lib/event-photos/constants';
+import { consentVersion, guestAccessKeyPattern, guestRegistrationDays, maxSelfieBytes, photoMimeTypes, whatsappConsentVersion } from '@/lib/event-photos/constants';
 import { photoMessage, photoRequest, startDownload } from '@/lib/event-photos/client';
 import styles from '@/app/photo-sharing/sharing.module.css';
 
@@ -35,8 +35,8 @@ async function prepareSelfie(file: File) {
   }
 }
 
-export default function GuestPhotoSearch({ token, downloadsEnabled }: {
-  token: string; downloadsEnabled: boolean;
+export default function GuestPhotoSearch({ token, downloadsEnabled, whatsappEnabled }: {
+  token: string; downloadsEnabled: boolean; whatsappEnabled: boolean;
 }) {
   const endpoint = '/api/event-guest/' + token;
   const [selfie, setSelfie] = useState<File>();
@@ -85,7 +85,7 @@ export default function GuestPhotoSearch({ token, downloadsEnabled }: {
     loadedLink.current = true;
     const accessKey = new URLSearchParams(window.location.hash.slice(1)).get('access');
     setLoadingLink(false);
-    if (!accessKey || !/^[a-f0-9]{48}$/.test(accessKey)) return;
+    if (!accessKey || !guestAccessKeyPattern.test(accessKey)) return;
     setPersonalLink(accessKey);
     void run(() => findMatches(accessKey));
   }, [findMatches, run]);
@@ -192,6 +192,10 @@ export default function GuestPhotoSearch({ token, downloadsEnabled }: {
       <p>Save your personal link and return after the photographer uploads the photos.</p>
       <label><span>Full name</span><input name="name" className="field" autoComplete="name" maxLength={100} required disabled={busy} /></label>
       <label><span>WhatsApp number</span><input name="phone" type="tel" className="field" autoComplete="tel" maxLength={24} required disabled={busy} /></label>
+      {whatsappEnabled && <label className={styles.check}>
+        <input name="whatsappConsent" value={whatsappConsentVersion} type="checkbox" disabled={busy} />
+        This is my WhatsApp number. Send me one private photo link when my matches are ready. Include your country code, for example +91.
+      </label>}
       <fieldset className={styles.stack}>
         <legend>Selfie</legend>
         <label><span>Take a selfie</span><input type="file" className="field" accept="image/*" capture="user" onChange={event => setSelfie(event.currentTarget.files?.[0])} disabled={busy} /></label>

@@ -1,6 +1,8 @@
+import { after } from 'next/server';
 import { z } from 'zod';
-import { consentVersion, guestRegistrationDays, guestSessionMinutes, maxSelfieBytes, originalBucket, photoMimeTypes } from '@/lib/event-photos/constants';
-import { matchSelfie, prepareRegistrationSelfie } from '@/lib/event-photos/recognition';
+import { consentVersion, guestRegistrationDays, guestSessionMinutes, maxSelfieBytes, originalBucket, photoMimeTypes, whatsappConsentVersion } from '@/lib/event-photos/constants';
+import { prepareRegistrationSelfie, readyGuestMatches } from '@/lib/event-photos/recognition';
+import { guestRegistrationHash, sendPendingWhatsApp, whatsappNotificationsEnabled } from '@/lib/event-photos/whatsapp';
 import {
   audit, dbRequired, dbResult, hashToken, photoDb, PhotoError, photoFailure, photoJson, previewPath, secretToken,
   sharedEvent, signedPhoto, type EventPhoto, type PhotoDb, validToken,
@@ -46,6 +48,14 @@ async function register(request: Request, token: string, db: PhotoDb) {
   if (!name.success) throw new PhotoError('Enter your name.');
   const phone = guestPhone.safeParse(form.get('phone'));
   if (!phone.success) throw new PhotoError('Enter a valid WhatsApp number.');
+  const notify = form.get('whatsappConsent') === whatsappConsentVersion;
+  const whatsappPhone = phone.data.replace(/[\s()-]/g, '');
+  if (notify && !/^[+][1-9]\d{6,14}$/.test(whatsappPhone)) {
+    throw new PhotoError('Enter your WhatsApp number with a + and country code to get an alert.');
+  }
+  if (notify && !whatsappNotificationsEnabled()) {
+    throw new PhotoError('WhatsApp alerts are temporarily unavailable. Uncheck the alert to continue.');
+  }
   if (!(selfie instanceof File) || selfie.size === 0 || selfie.size > maxSelfieBytes || !photoMimeTypes.includes(selfie.type)) {
     throw new PhotoError('Choose a JPG, PNG or WebP selfie under 3 MB.');
   }
@@ -55,8 +65,9 @@ async function register(request: Request, token: string, db: PhotoDb) {
   const accessKey = secretToken();
   const expiresAt = new Date(Date.now() + guestRegistrationDays * 86_400_000).toISOString();
   const registration = {
-    token_hash: hashToken(accessKey), event_id: current.id, guest_name: name.data, phone: phone.data,
+    token_hash: hashToken(accessKey), event_id: current.id, guest_name: name.data, phone: notify ? whatsappPhone : phone.data,
     selfie_jpeg: '\\x' + bytes.toString('hex'), consent_version: consentVersion, expires_at: expiresAt,
+    ...(notify && { whatsapp_opted_in_at: new Date().toISOString(), whatsapp_next_attempt_at: new Date().toISOString() }),
   };
   const registrations = db.from('photo_guest_registrations');
   let saved = await registrations.insert(registration);
@@ -68,6 +79,7 @@ async function register(request: Request, token: string, db: PhotoDb) {
     console.error('Guest registration insert failed:', saved.error.code);
     throw new PhotoError('We could not save your registration. Please try again later.', 502);
   }
+  if (notify) after(() => sendPendingWhatsApp(db, Date.now() + 8_000, current.id));
   return photoJson({ accessKey, expiresAt }, 201);
 }
 
@@ -84,10 +96,8 @@ async function find(db: PhotoDb, token: string, registrationHash: string) {
   const saved = dbResult(await db.from('photo_guest_registrations').select('selfie_jpeg')
     .eq('event_id', event.id).eq('token_hash', registrationHash).gt('expires_at', new Date().toISOString()).maybeSingle());
   if (!saved) throw new PhotoError('This personal link has expired or was removed.', 404);
-  const ids = await matchSelfie(event.id, Buffer.from(saved.selfie_jpeg.slice(2), 'hex'));
+  const photos = await readyGuestMatches(db, event.id, saved.selfie_jpeg);
   await sharedEvent(db, token);
-  const photos = ids.length ? dbRequired(await db.from('event_photos')
-    .select('id,file_name,byte_size,storage_path').eq('event_id', event.id).eq('status', 'ready').in('id', ids)) : [];
   const session = secretToken();
   const now = Date.now();
   const registrationExpiry = Date.parse(registration.expires_at);
@@ -116,8 +126,8 @@ export async function POST(request: Request, { params }: Context) {
     if (!parsed.success) throw new PhotoError('Invalid request.');
     const input = parsed.data;
     if (input.action === 'find' || input.action === 'forget') {
-      if (!validToken(input.accessKey)) throw new PhotoError('Invalid personal link.');
-      const registrationHash = hashToken(input.accessKey);
+      const registrationHash = guestRegistrationHash(token, input.accessKey);
+      if (!registrationHash) throw new PhotoError('Invalid personal link.');
       if (input.action === 'find') return await find(db, token, registrationHash);
       const event = dbResult(await db.from('photo_events').select('id').eq('share_token', token).maybeSingle());
       if (event) dbResult(await db.from('photo_guest_registrations').delete()

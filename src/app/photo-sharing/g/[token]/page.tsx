@@ -1,5 +1,6 @@
 import GuestPhotoSearch from '@/components/event-photos/GuestPhotoSearch';
 import { photoDb, sharedEvent } from '@/lib/event-photos/server';
+import { whatsappNotificationsEnabled } from '@/lib/event-photos/whatsapp';
 import styles from '../../sharing.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,8 @@ export default async function GuestPage({ params }: { params: Promise<{ token: s
     {event ? <>
       <h1>{event.title}</h1>
       <p>{[event.event_type, event.event_date].filter(Boolean).join(' · ')}</p>
-      <GuestPhotoSearch token={token} downloadsEnabled={event.guest_downloads_enabled !== false} />
+      <GuestPhotoSearch token={token} downloadsEnabled={event.guest_downloads_enabled !== false}
+        whatsappEnabled={whatsappNotificationsEnabled()} />
     </> : <><h1>Event link unavailable</h1><p>Ask your photographer for the current QR code or event link.</p></>}
   </div></main>;
 }
